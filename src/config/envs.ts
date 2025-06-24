@@ -5,6 +5,7 @@ interface EnvVars {
   PORT: number;
   NODE_ENV: 'development' | 'production' | 'test';
   NATS_SERVERS: string;
+  POINT_DATABASE_URL: string;
 }
 
 const envsSchema = joi
@@ -18,6 +19,10 @@ const envsSchema = joi
       .string()
       .valid('development', 'production', 'test')
       .default('development'),
+    POINT_DATABASE_URL: joi
+      .string()
+      .uri()
+      .default('postgres://user:password@localhost:5432/point'),
   })
   .unknown(true);
 
