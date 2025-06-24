@@ -13,7 +13,6 @@ import { PointsTransaction } from './points-transaction.entity';
 
 @Entity('user_points')
 @Index(['userId'], { unique: true })
-@Index(['membershipPlanId'])
 @Index(['updatedAt'])
 export class UserPoints {
   @PrimaryGeneratedColumn()

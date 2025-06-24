@@ -15,8 +15,7 @@ import { VolumeSide, WeeklyVolume } from './weekly-volume.entity';
 @Entity('weekly_volume_history')
 @Index(['weeklyVolume'])
 @Index(['paymentId'])
-@Index(['action', 'createdAt'])
-@Index(['userId'])
+@Index(['createdAt'])
 export class WeeklyVolumeHistory {
   @PrimaryGeneratedColumn('uuid')
   id: string;
