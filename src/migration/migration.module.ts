@@ -1,9 +1,25 @@
 import { Module } from '@nestjs/common';
-import { MigrationService } from './migration.service';
-import { MigrationController } from './migration.controller';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { UserPoints } from '../point/entities/user-points.entity';
+import { PointsTransaction } from '../point/entities/points-transaction.entity';
+import { PointsTransactionPayment } from '../point/entities/points-transaction-payment.entity';
+import { WeeklyVolume } from '../weekly-volume/entities/weekly-volume.entity';
+import { WeeklyVolumeHistory } from '../weekly-volume/entities/weekly-volume-history.entity';
+import { UserPointsMigrationController } from './controllers/user-points-migration.controller';
+import { UserPointsMigrationService } from './services/user-points-migration.service';
 
 @Module({
-  controllers: [MigrationController],
-  providers: [MigrationService],
+  imports: [
+    TypeOrmModule.forFeature([
+      UserPoints,
+      PointsTransaction,
+      PointsTransactionPayment,
+      WeeklyVolume,
+      WeeklyVolumeHistory,
+    ]),
+  ],
+  controllers: [UserPointsMigrationController],
+  providers: [UserPointsMigrationService],
+  exports: [UserPointsMigrationService],
 })
 export class MigrationModule {}

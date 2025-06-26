@@ -62,10 +62,6 @@ export class PointsTransactionPayment {
   @BeforeInsert()
   @BeforeUpdate()
   validate() {
-    if (this.amount <= 0) {
-      throw new Error('El monto debe ser mayor a 0');
-    }
-
     // Limpiar campos de texto
     if (this.paymentReference) {
       this.paymentReference = this.paymentReference.trim();

@@ -10,8 +10,11 @@ import {
   PrimaryColumn,
   UpdateDateColumn,
 } from 'typeorm';
-import { VolumeSide, WeeklyVolume } from './weekly-volume.entity';
-
+import { WeeklyVolume } from './weekly-volume.entity';
+enum VolumeSide {
+  LEFT = 'LEFT',
+  RIGHT = 'RIGHT',
+}
 @Entity('weekly_volume_history')
 @Index(['weeklyVolume'])
 @Index(['paymentId'])
