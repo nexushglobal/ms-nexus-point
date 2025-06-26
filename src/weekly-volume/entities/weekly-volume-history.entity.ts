@@ -7,7 +7,7 @@ import {
   Index,
   JoinColumn,
   ManyToOne,
-  PrimaryGeneratedColumn,
+  PrimaryColumn,
   UpdateDateColumn,
 } from 'typeorm';
 import { VolumeSide, WeeklyVolume } from './weekly-volume.entity';
@@ -17,8 +17,8 @@ import { VolumeSide, WeeklyVolume } from './weekly-volume.entity';
 @Index(['paymentId'])
 @Index(['createdAt'])
 export class WeeklyVolumeHistory {
-  @PrimaryGeneratedColumn('uuid')
-  id: string;
+  @PrimaryColumn()
+  id: number;
 
   @ManyToOne(() => WeeklyVolume, (volume) => volume.history, {
     nullable: false,

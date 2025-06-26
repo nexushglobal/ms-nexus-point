@@ -6,7 +6,7 @@ import {
   Entity,
   Index,
   OneToMany,
-  PrimaryGeneratedColumn,
+  PrimaryColumn,
   UpdateDateColumn,
 } from 'typeorm';
 import { WeeklyVolumeHistory } from './weekly-volume-history.entity';
@@ -27,7 +27,7 @@ export enum VolumeSide {
 @Index(['weekStartDate', 'weekEndDate'])
 @Index(['status', 'weekStartDate'])
 export class WeeklyVolume {
-  @PrimaryGeneratedColumn()
+  @PrimaryColumn()
   id: number;
 
   @Column({ name: 'user_id' })

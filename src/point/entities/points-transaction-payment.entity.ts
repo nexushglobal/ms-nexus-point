@@ -7,7 +7,7 @@ import {
   Index,
   JoinColumn,
   ManyToOne,
-  PrimaryGeneratedColumn,
+  PrimaryColumn,
   UpdateDateColumn,
 } from 'typeorm';
 import { PointsTransaction } from './points-transaction.entity';
@@ -17,8 +17,8 @@ import { PointsTransaction } from './points-transaction.entity';
 @Index(['paymentId'])
 @Index(['createdAt'])
 export class PointsTransactionPayment {
-  @PrimaryGeneratedColumn('uuid')
-  id: string;
+  @PrimaryColumn()
+  id: number;
 
   @ManyToOne(() => PointsTransaction, (transaction) => transaction.payments, {
     nullable: false,
