@@ -6,7 +6,9 @@ import { PointsTransactionPayment } from '../point/entities/points-transaction-p
 import { WeeklyVolume } from '../weekly-volume/entities/weekly-volume.entity';
 import { WeeklyVolumeHistory } from '../weekly-volume/entities/weekly-volume-history.entity';
 import { UserPointsMigrationController } from './controllers/user-points-migration.controller';
+import { WeeklyVolumeMigrationController } from './controllers/weekly-volume-migration.controller';
 import { UserPointsMigrationService } from './services/user-points-migration.service';
+import { WeeklyVolumeMigrationService } from './services/weekly-volume-migration.service';
 
 @Module({
   imports: [
@@ -18,8 +20,8 @@ import { UserPointsMigrationService } from './services/user-points-migration.ser
       WeeklyVolumeHistory,
     ]),
   ],
-  controllers: [UserPointsMigrationController],
-  providers: [UserPointsMigrationService],
-  exports: [UserPointsMigrationService],
+  controllers: [UserPointsMigrationController, WeeklyVolumeMigrationController],
+  providers: [UserPointsMigrationService, WeeklyVolumeMigrationService],
+  exports: [UserPointsMigrationService, WeeklyVolumeMigrationService],
 })
 export class MigrationModule {}
