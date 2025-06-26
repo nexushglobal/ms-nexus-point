@@ -28,7 +28,7 @@ export class PointsTransactionPayment {
   pointsTransaction: PointsTransaction;
 
   @Column({ name: 'payment_id' })
-  paymentId: string; // UUID del pago desde el microservicio de payments
+  paymentId: number;
 
   @Column({
     type: 'decimal',
