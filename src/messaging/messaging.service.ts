@@ -29,7 +29,7 @@ export class MessagingService {
             typeof err?.status === 'number'
               ? err.status
               : HttpStatus.INTERNAL_SERVER_ERROR;
-          const service = err?.service || 'vdi-client-gateway';
+          const service = err?.service || 'ms-nexus-gateway';
           throw new RpcException({
             status: statusCode,
             message: errorMessage,

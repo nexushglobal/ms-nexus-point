@@ -53,4 +53,34 @@ export class UserPointsService {
         : null,
     };
   }
+
+  async getUserLotPoints(userId: string) {
+    const user = await this.usersService.getUser(userId);
+    if (!user)
+      throw new RpcException({
+        status: HttpStatus.NOT_FOUND,
+        message: `Usuario con ID ${userId} no encontrado`,
+      });
+    // try {
+    const userPoints = await this.userPointsRepository.findOne({
+      where: { userId },
+    });
+    if (!userPoints)
+      throw new RpcException({
+        status: HttpStatus.NOT_FOUND,
+        message: `Usuario con ID ${userId} no tiene puntos`,
+      });
+    const membershipInfo =
+      await this.membershipService.getUserMembershipInfo(userId);
+    return {
+      availableLotPoints: userPoints.availableLotPoints | 0,
+      totalEarnedLotPoints: userPoints.totalEarnedLotPoints | 0,
+      totalWithdrawnLotPoints: userPoints.totalWithdrawnLotPoints | 0,
+      membershipPlan: membershipInfo.plan
+        ? {
+            name: membershipInfo.plan.name,
+          }
+        : null,
+    };
+  }
 }

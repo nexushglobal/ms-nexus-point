@@ -10,4 +10,9 @@ export class UserPointsController {
   async getUserPoints(data: { userId: string }) {
     return this.userPointsService.getUserPoints(data.userId);
   }
+
+  @MessagePattern({ cmd: 'userLotPoints.get' })
+  async getUserLotPoints(data: { userId: string }) {
+    return this.userPointsService.getUserLotPoints(data.userId);
+  }
 }

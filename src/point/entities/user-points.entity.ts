@@ -66,6 +66,46 @@ export class UserPoints {
   })
   totalWithdrawnPoints: number;
 
+  // ========== PUNTOS DE LOTES ==========
+  @Column({
+    type: 'decimal',
+    precision: 12,
+    scale: 2,
+    default: 0,
+    name: 'available_lot_points',
+    transformer: {
+      to: (value: number) => value,
+      from: (value: string) => parseFloat(value),
+    },
+  })
+  availableLotPoints: number;
+
+  @Column({
+    type: 'decimal',
+    precision: 12,
+    scale: 2,
+    default: 0,
+    name: 'total_earned_lot_points',
+    transformer: {
+      to: (value: number) => value,
+      from: (value: string) => parseFloat(value),
+    },
+  })
+  totalEarnedLotPoints: number;
+
+  @Column({
+    type: 'decimal',
+    precision: 12,
+    scale: 2,
+    default: 0,
+    name: 'total_withdrawn_lot_points',
+    transformer: {
+      to: (value: number) => value,
+      from: (value: string) => parseFloat(value),
+    },
+  })
+  totalWithdrawnLotPoints: number;
+
   @Column({ type: 'jsonb', nullable: true })
   metadata?: Record<string, any>;
 

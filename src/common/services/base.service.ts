@@ -5,7 +5,7 @@ import { paginate } from '../helpers/paginate.helper';
 import { Paginated } from '../dto/paginated.dto';
 
 @Injectable()
-export abstract class BaseService<T extends object> {
+export class BaseService<T extends object> {
   constructor(private readonly repository: Repository<T>) {}
 
   async findAllBase<R>(
