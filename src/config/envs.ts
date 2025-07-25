@@ -26,10 +26,10 @@ const envsSchema = joi
   })
   .unknown(true);
 
-const { error, value } = envsSchema.validate(process.env);
+const result = envsSchema.validate(process.env);
 
-if (error) {
-  throw new Error(`Config validation error: ${error.message}`);
+if (result.error) {
+  throw new Error(`Config validation error: ${result.error.message}`);
 }
 
-export const envs: EnvVars = value;
+export const envs: EnvVars = result.value as EnvVars;

@@ -1,0 +1,5 @@
+export enum PointTransactionType {
+  BINARY_COMMISSION = 'BINARY_COMMISSION',
+  DIRECT_BONUS = 'DIRECT_BONUS',
+  WITHDRAWAL = 'WITHDRAWAL',
+}
