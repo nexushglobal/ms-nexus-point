@@ -5,11 +5,9 @@ import {
   CreateDateColumn,
   Entity,
   Index,
-  OneToMany,
   PrimaryColumn,
   UpdateDateColumn,
 } from 'typeorm';
-import { PointsTransactionPayment } from './points-transaction-payment.entity';
 
 export enum LotPointTransactionType {
   LOT_BINARY_COMMISSION = 'LOT_BINARY_COMMISSION',
@@ -95,12 +93,12 @@ export class LotPointsTransaction {
   @Column({ name: 'is_archived', default: false })
   isArchived: boolean;
 
-  @OneToMany(
-    () => PointsTransactionPayment,
-    (payment) => payment.pointsTransaction,
-    { cascade: true },
-  )
-  payments: PointsTransactionPayment[];
+  // @OneToMany(
+  //   () => PointsTransactionPayment,
+  //   (payment) => payment.pointsTransaction,
+  //   { cascade: true },
+  // )
+  // payments: PointsTransactionPayment[];
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
