@@ -102,6 +102,9 @@ export class PointsTransaction {
   )
   payments: PointsTransactionPayment[];
 
+  @Column({ type: 'jsonb', nullable: true })
+  metadata: Record<string, any>;
+
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 
