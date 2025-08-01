@@ -6,7 +6,7 @@ import {
   Entity,
   Index,
   OneToMany,
-  PrimaryColumn,
+  PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
 import { PointsTransactionPayment } from './points-transaction-payment.entity';
@@ -29,7 +29,7 @@ export enum PointTransactionStatus {
 @Index(['type', 'createdAt'])
 @Index(['status', 'createdAt'])
 export class PointsTransaction {
-  @PrimaryColumn()
+  @PrimaryGeneratedColumn()
   id: number;
 
   @Column({ name: 'user_id' })

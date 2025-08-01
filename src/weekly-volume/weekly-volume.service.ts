@@ -5,7 +5,7 @@ import {
   VolumeSide,
   WeeklyVolume,
 } from './entities/weekly-volume.entity';
-import { DataSource, Repository } from 'typeorm';
+import { DataSource, QueryRunner, Repository } from 'typeorm';
 import { WeeklyVolumeHistory } from './entities/weekly-volume-history.entity';
 import {
   CreateVolumeDto,
@@ -40,95 +40,22 @@ export class WeeklyVolumeService {
         `Iniciando asignación de volúmenes para ${addVolumeDto.users.length} usuarios`,
       );
 
-      const { weekStartDate, weekEndDate } = this.getCurrentWeekDates();
       const processedItems: ProcessedVolumeDto[] = [];
       const failedItems: FailedVolumeDto[] = [];
-      let created = 0;
-      let updated = 0;
-
+      // Procesar cada usuario usando la lógica del monolítico
       for (const userAssignment of addVolumeDto.users) {
         try {
-          const user = await this.usersService.getUser(userAssignment.id);
-          // Buscar volumen semanal existente para el usuario en la semana actual con status PENDING
-          let weeklyVolume = await this.weeklyVolumeRepository.findOne({
-            where: {
-              userId: userAssignment.id,
-              weekStartDate: weekStartDate,
-              weekEndDate: weekEndDate,
-              status: VolumeProcessingStatus.PENDING,
-            },
-          });
-
-          let action: 'created' | 'updated';
-
-          if (weeklyVolume) {
-            // Actualizar volumen existente
-            if (userAssignment.site === VolumeSide.LEFT) {
-              weeklyVolume.leftVolume =
-                Number(weeklyVolume.leftVolume) + Number(addVolumeDto.volumen);
-            } else {
-              weeklyVolume.rightVolume =
-                Number(weeklyVolume.rightVolume) + Number(addVolumeDto.volumen);
-            }
-            action = 'updated';
-            updated++;
-          } else {
-            // Crear nuevo volumen semanal
-            weeklyVolume = this.weeklyVolumeRepository.create({
-              userId: userAssignment.id,
-              userEmail: user.email,
-              userName: `${user.firstName} ${user.lastName}`,
-              leftVolume:
-                userAssignment.site === VolumeSide.LEFT
-                  ? addVolumeDto.volumen
-                  : 0,
-              rightVolume:
-                userAssignment.site === VolumeSide.RIGHT
-                  ? addVolumeDto.volumen
-                  : 0,
-              weekStartDate: weekStartDate,
-              weekEndDate: weekEndDate,
-              status: VolumeProcessingStatus.PENDING,
-              metadata: {
-                createdBy: 'bulk_volume_assignment',
-                paymentAmount: addVolumeDto.monto,
-                createdAt: new Date().toISOString(),
-              },
-            });
-            action = 'created';
-            created++;
-          }
-
-          // Guardar el volumen semanal
-          const savedWeeklyVolume =
-            await queryRunner.manager.save(weeklyVolume);
-
-          // Crear registro en el historial
-          const volumeHistory = this.weeklyVolumeHistoryRepository.create({
-            weeklyVolume: savedWeeklyVolume,
-            paymentId: userAssignment.paymentId,
-            volumeSide: userAssignment.site,
-            volume: addVolumeDto.volumen,
-            metadata: {
-              paymentAmount: addVolumeDto.monto,
-              bulkAssignment: true,
-              processedAt: new Date().toISOString(),
-            },
-          });
-
-          await queryRunner.manager.save(volumeHistory);
-
-          const processedItem = new ProcessedVolumeDto();
-          processedItem.userId = userAssignment.id;
-          processedItem.side = userAssignment.site;
-          processedItem.volumeAdded = addVolumeDto.volumen;
-          processedItem.action = action;
-          processedItem.weeklyVolumeId = savedWeeklyVolume.id;
-
-          processedItems.push(processedItem);
+          await this.updateWeeklyVolume(
+            userAssignment.id,
+            addVolumeDto.volume,
+            userAssignment.site,
+            userAssignment.paymentId,
+            queryRunner,
+            processedItems,
+          );
 
           this.logger.log(
-            `Volumen ${action} para usuario ${userAssignment.id}: +${addVolumeDto.volumen} en lado ${userAssignment.site}`,
+            `Volumen semanal procesado para usuario ${userAssignment.id}: ${addVolumeDto.volume} en lado ${userAssignment.site}`,
           );
         } catch (error) {
           const errorMessage = this.getErrorMessage(error);
@@ -145,8 +72,9 @@ export class WeeklyVolumeService {
       await queryRunner.commitTransaction();
 
       this.logger.log(
-        `Asignación de volúmenes completada: ${processedItems.length} exitosos (${created} creados, ${updated} actualizados), ${failedItems.length} fallidos`,
+        `Asignación de volúmenes completada: ${processedItems.length} exitosos, ${failedItems.length} fallidos`,
       );
+
       return {
         processed: processedItems,
         failed: failedItems,
@@ -158,6 +86,105 @@ export class WeeklyVolumeService {
       throw error;
     } finally {
       await queryRunner.release();
+    }
+  }
+
+  // Lógica adaptada del monolítico - método updateWeeklyVolume
+  private async updateWeeklyVolume(
+    userId: string,
+    binaryPoints: number,
+    side: VolumeSide,
+    paymentId: string,
+    queryRunner: QueryRunner,
+    processedItems: ProcessedVolumeDto[],
+  ) {
+    try {
+      const { weekStartDate, weekEndDate } = this.getCurrentWeekDates();
+
+      // Buscar volumen existente (igual que en monolítico)
+      const existingVolume = await this.weeklyVolumeRepository.findOne({
+        where: {
+          userId: userId,
+          status: VolumeProcessingStatus.PENDING,
+          weekStartDate: weekStartDate,
+          weekEndDate: weekEndDate,
+        },
+      });
+
+      let weeklyVolume: WeeklyVolume;
+      let action: 'created' | 'updated';
+
+      if (existingVolume) {
+        // Actualizar volumen existente (lógica del monolítico)
+        if (side === VolumeSide.LEFT) {
+          existingVolume.leftVolume =
+            Number(existingVolume.leftVolume) + Number(binaryPoints);
+        } else {
+          existingVolume.rightVolume =
+            Number(existingVolume.rightVolume) + Number(binaryPoints);
+        }
+
+        weeklyVolume = existingVolume;
+        action = 'updated';
+
+        this.logger.log(
+          `Volumen semanal actualizado para usuario ${userId}: +${binaryPoints} en lado ${side}`,
+        );
+      } else {
+        // Crear nuevo volumen (lógica del monolítico)
+        const user = await this.usersService.getUser(userId);
+        const newVolume = this.weeklyVolumeRepository.create({
+          userId: userId,
+          userEmail: user.email,
+          userName: `${user.firstName} ${user.lastName}`,
+          leftVolume: side === VolumeSide.LEFT ? binaryPoints : 0,
+          rightVolume: side === VolumeSide.RIGHT ? binaryPoints : 0,
+          weekStartDate: weekStartDate,
+          weekEndDate: weekEndDate,
+          status: VolumeProcessingStatus.PENDING,
+          metadata: {
+            createdBy: 'bulk_volume_assignment',
+            createdAt: new Date().toISOString(),
+          },
+        });
+
+        weeklyVolume = newVolume;
+        action = 'created';
+
+        this.logger.log(
+          `Nuevo volumen semanal creado para usuario ${userId}: ${binaryPoints} en lado ${side}`,
+        );
+      }
+
+      // Guardar volumen
+      const savedWeeklyVolume = await queryRunner.manager.save(weeklyVolume);
+
+      // Crear historial (igual que en monolítico)
+      const history = this.weeklyVolumeHistoryRepository.create({
+        weeklyVolume: savedWeeklyVolume,
+        paymentId: paymentId,
+        volumeSide: side,
+        volume: binaryPoints,
+        metadata: {
+          bulkAssignment: true,
+          processedAt: new Date().toISOString(),
+        },
+      });
+
+      await queryRunner.manager.save(history);
+
+      // Agregar a processedItems
+      const processedItem = new ProcessedVolumeDto();
+      processedItem.userId = userId;
+      processedItem.side = side;
+      processedItem.volumeAdded = binaryPoints;
+      processedItem.action = action;
+      processedItem.weeklyVolumeId = savedWeeklyVolume.id;
+      processedItems.push(processedItem);
+    } catch (error) {
+      const errorMessage = this.getErrorMessage(error);
+      this.logger.error(`Error al actualizar volumen semanal: ${errorMessage}`);
+      throw error;
     }
   }
 

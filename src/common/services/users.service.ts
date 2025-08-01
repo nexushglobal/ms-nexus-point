@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { MessagingService } from 'src/messaging/messaging.service';
 import { GetUserResponse } from '../interfaces/get-user-response.interface';
+import { GetUserByIdInfoResponse } from '../interfaces/get-user-by-id-info-response.interface';
 
 @Injectable()
 export class UsersService {
@@ -8,5 +9,18 @@ export class UsersService {
 
   async getUser(userId: string): Promise<GetUserResponse> {
     return await this.client.send({ cmd: 'user.getUserBasicInfo' }, { userId });
+  }
+
+  async getUserByIdInfo(userId: string): Promise<GetUserByIdInfoResponse> {
+    return await this.client.send({ cmd: 'user.findById' }, { id: userId });
+  }
+
+  async getUserByReferralCode(
+    referralCode: string,
+  ): Promise<GetUserByIdInfoResponse> {
+    return await this.client.send(
+      { cmd: 'user.findByReferralCode' },
+      { code: referralCode },
+    );
   }
 }

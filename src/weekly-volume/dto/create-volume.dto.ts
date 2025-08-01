@@ -28,11 +28,11 @@ export class VolumeUserAssignmentDto {
 export class CreateVolumeDto {
   @IsNumber({}, { message: 'El campo de monto es un número' })
   @IsNotEmpty({ message: 'El campo de monto es obligatorio' })
-  monto: number;
+  amount: number;
 
   @IsNumber({}, { message: 'El campo de volumen es un número' })
   @IsNotEmpty({ message: 'El campo de volumen es obligatorio' })
-  volumen: number;
+  volume: number;
 
   @IsArray()
   @ValidateNested({ each: true })
