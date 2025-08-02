@@ -5,7 +5,7 @@ import {
   CreateDateColumn,
   Entity,
   Index,
-  PrimaryColumn,
+  PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
 
@@ -27,7 +27,7 @@ export enum LotPointTransactionStatus {
 @Index(['type', 'createdAt'])
 @Index(['status', 'createdAt'])
 export class LotPointsTransaction {
-  @PrimaryColumn()
+  @PrimaryGeneratedColumn()
   id: number;
 
   @Column({ name: 'user_id' })

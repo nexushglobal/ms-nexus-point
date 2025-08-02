@@ -6,7 +6,7 @@ import {
   Entity,
   Index,
   OneToMany,
-  PrimaryColumn,
+  PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
 import { PointsTransaction } from './points-transaction.entity';
@@ -15,7 +15,7 @@ import { PointsTransaction } from './points-transaction.entity';
 @Index(['userId'], { unique: true })
 @Index(['updatedAt'])
 export class UserPoints {
-  @PrimaryColumn()
+  @PrimaryGeneratedColumn()
   id: number;
 
   @Column({ name: 'user_id', unique: true })
