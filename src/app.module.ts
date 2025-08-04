@@ -1,5 +1,4 @@
 import { Module } from '@nestjs/common';
-import { MigrationModule } from './migration/migration.module';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { databaseConfig } from './config/database.config';
 import { PointModule } from './point/point.module';
@@ -12,7 +11,6 @@ import { MessagingModule } from './messaging/messaging.module';
     TypeOrmModule.forRootAsync({
       useFactory: () => databaseConfig,
     }),
-    MigrationModule,
     PointModule,
     WeeklyVolumeModule,
     CommonModule,
