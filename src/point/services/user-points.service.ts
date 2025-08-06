@@ -232,7 +232,10 @@ export class UserPointsService {
         amount: directBonus,
         pendingAmount: 0,
         withdrawnAmount: 0,
-        status: PointTransactionStatus.COMPLETED,
+        status:
+          directBonus > 0
+            ? PointTransactionStatus.COMPLETED
+            : PointTransactionStatus.CANCELLED,
         isArchived: false,
         metadata: {
           ...metadata,
@@ -245,23 +248,24 @@ export class UserPointsService {
         await queryRunner.manager.save(pointsTransaction);
 
       // Crear relación con el pago usando TUS ENTIDADES
-      const pointsTransactionPayment =
-        this.pointsTransactionPaymentRepository.create({
-          pointsTransaction: savedTransaction,
-          paymentId: paymentId,
-          amount: directBonus,
-          paymentReference: paymentReference,
-          paymentMethod: 'DIRECT_BONUS',
-          notes: `Suma de puntos a ${referrerPoints.userName}`,
-          metadata: {
-            Usuario: referrerPoints.userId,
-            'Puntos Sumados': directBonus,
-            bulkAssignment: true,
-            processedAt: new Date().toISOString(),
-          },
-        });
-
-      await queryRunner.manager.save(pointsTransactionPayment);
+      if (directBonus > 0) {
+        const pointsTransactionPayment =
+          this.pointsTransactionPaymentRepository.create({
+            pointsTransaction: savedTransaction,
+            paymentId: paymentId,
+            amount: directBonus,
+            paymentReference: paymentReference,
+            // paymentMethod: 'DIRECT_BONUS',
+            notes: `Suma de puntos a ${referrerPoints.userName}`,
+            metadata: {
+              Usuario: referrerPoints.userId,
+              'Puntos Sumados': directBonus,
+              bulkAssignment: true,
+              processedAt: new Date().toISOString(),
+            },
+          });
+        await queryRunner.manager.save(pointsTransactionPayment);
+      }
 
       // Agregar a processedItems
       const processedItem = new ProcessedDirectBonusDto();
