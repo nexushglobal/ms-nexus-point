@@ -6,6 +6,7 @@ import {
   ValidateNested,
   IsObject,
   IsEnum,
+  IsOptional,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { PointTransactionType } from '../entities/points-transaction.entity';
@@ -24,11 +25,11 @@ export class DirectBonusUserDto {
   userEmail: string; // Email del usuario que compró
 
   @IsString()
-  @IsNotEmpty()
+  @IsOptional()
   paymentReference?: string; // Referencia del pago de este usuario
 
   @IsNumber()
-  @IsNotEmpty()
+  @IsOptional()
   paymentId?: number; // ID del pago de este usuario
 
   @IsNumber()
