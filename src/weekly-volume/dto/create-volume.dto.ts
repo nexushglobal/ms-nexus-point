@@ -12,7 +12,15 @@ import { VolumeSide } from '../entities/weekly-volume.entity';
 export class VolumeUserAssignmentDto {
   @IsString({ message: 'El campo ID de usuario es una cadena de texto' })
   @IsNotEmpty({ message: 'El campo ID de usuario es obligatorio' })
-  id: string;
+  userId: string;
+
+  @IsString({ message: 'El campo nombre de usuario es una cadena de texto' })
+  @IsNotEmpty({ message: 'El campo nombre de usuario es obligatorio' })
+  userName: string; // Nombre del usuario que compró
+
+  @IsString({ message: 'El campo email de usuario es una cadena de texto' })
+  @IsNotEmpty({ message: 'El campo email de usuario es obligatorio' })
+  userEmail: string; // Email del usuario que compró
 
   @IsEnum(VolumeSide, {
     message: 'El campo del lado del volumen es: LEFT o RIGHT',

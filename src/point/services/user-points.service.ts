@@ -9,13 +9,13 @@ import { PointsEventsService } from './points-events.service';
 import {
   CreateDirectBonusDto,
   DirectBonusResponseDto,
+  DirectBonusUserDto,
   FailedDirectBonusDto,
   ProcessedDirectBonusDto,
 } from '../dto/create-direct-bonus.dto';
 import {
   PointsTransaction,
   PointTransactionStatus,
-  PointTransactionType,
 } from '../entities/points-transaction.entity';
 import { PointsTransactionPayment } from '../entities/points-transaction-payment.entity';
 
@@ -121,9 +121,7 @@ export class UserPointsService {
       for (const userAssignment of createDirectBonusDto.users) {
         try {
           await this.processDirectBonus(
-            userAssignment.userId,
-            userAssignment.paymentReference,
-            userAssignment.paymentId,
+            userAssignment,
             queryRunner,
             processedItems,
           );
@@ -139,6 +137,8 @@ export class UserPointsService {
 
           const failedItem = new FailedDirectBonusDto();
           failedItem.userId = userAssignment.userId;
+          failedItem.userName = userAssignment.userName; // ¡Agregar este campo!
+          failedItem.userEmail = userAssignment.userEmail; // ¡Agregar este campo!
           failedItem.paymentReference = userAssignment.paymentReference;
           failedItem.reason = `Error al procesar: ${errorMessage}`;
           failedItems.push(failedItem);
@@ -166,82 +166,52 @@ export class UserPointsService {
 
   // Lógica adaptada del monolítico - método processDirectBonus
   private async processDirectBonus(
-    userId: string,
-    paymentReference: string,
-    paymmentId: number,
+    directBonusDto: DirectBonusUserDto,
     queryRunner: QueryRunner,
     processedItems: ProcessedDirectBonusDto[],
   ) {
     try {
-      // Obtener el usuario que compró y su plan (desde el servicio de usuarios)
-      const user = await this.usersService.getUserByIdInfo(userId);
-      if (!user || !user.referrerCode)
-        throw new RpcException({
-          status: HttpStatus.NOT_FOUND,
-          message: 'Usuario no encontrado o no tiene referente',
-        });
-      // Obtener información del plan comprado por el usuario
-      const userPlan =
-        await this.membershipService.getUserMembershipInfo(userId);
-      if (!userPlan || !userPlan.plan)
-        throw new RpcException({
-          status: HttpStatus.NOT_FOUND,
-          message: 'No se pudo obtener información del plan comprado',
-        });
+      const {
+        userId,
+        userName,
+        userEmail,
+        metadata,
+        type,
+        directBonus,
+        paymentReference,
+        paymentId,
+      } = directBonusDto;
       // Buscar el referente (igual que en el monolítico)
-      const referrer = await this.usersService.getUserByReferralCode(
-        user.referrerCode,
-      );
-      if (!referrer)
-        throw new RpcException({
-          status: HttpStatus.NOT_FOUND,
-          message: `No se encontró referente con código ${user.referrerCode}`,
-        });
-      // Obtener membresía del referente (adaptado del monolítico)
-      console.log(referrer._id);
-      const referrerMembership =
-        await this.membershipService.getUserMembershipInfo(referrer._id);
-      if (!referrerMembership || !referrerMembership.plan) {
-        throw new RpcException({
-          status: HttpStatus.NOT_FOUND,
-          message: `El referente ${referrer._id} no tiene una membresía activa`,
-        });
-      }
-      const referrerPlan = await this.membershipService.getMembershipPlan(
-        referrerMembership.plan.id,
-        referrer._id,
-      );
-      if (
-        !referrerPlan.plan.directCommissionAmount ||
-        referrerPlan.plan.directCommissionAmount <= 0
-      ) {
-        throw new RpcException({
-          status: HttpStatus.NOT_FOUND,
-          message: `El plan ${referrerPlan.plan.id} del referente no tiene configurada una comisión directa`,
-        });
-      }
-
-      // Calcular bono directo (igual que en el monolítico)
-      const directBonus =
-        referrerPlan.plan.directCommissionAmount * (userPlan.plan.price / 100);
-
-      // Actualizar puntos del referente usando TUS ENTIDADES
       let referrerPoints = await this.userPointsRepository.findOne({
-        where: { userId: referrer._id },
+        where: { userId },
       });
+      // if (referrerPoints) {
+      //   const referrerMembership =
+      //     await this.membershipService.getUserMembershipInfo(
+      //       referrerPoints.userId,
+      //     );
+      //   if (!referrerMembership || !referrerMembership.plan)
+      //     throw new RpcException({
+      //       status: HttpStatus.NOT_FOUND,
+      //       message: `El referente ${referrerPoints.userId} no tiene una membresía activa`,
+      //     });
+      // }
+
+      let previousPoints = 0;
+      let currentPoints = directBonus;
 
       if (referrerPoints) {
+        previousPoints = Number(referrerPoints.availablePoints);
         referrerPoints.availablePoints =
           Number(referrerPoints.availablePoints) + directBonus;
         referrerPoints.totalEarnedPoints =
           Number(referrerPoints.totalEarnedPoints) + directBonus;
-        referrerPoints.userEmail = referrer.email;
-        referrerPoints.userName = `${referrer.firstName} ${referrer.lastName}`;
+        currentPoints = Number(referrerPoints.availablePoints);
       } else {
         referrerPoints = this.userPointsRepository.create({
-          userId: referrer._id,
-          userEmail: referrer.email,
-          userName: `${referrer.firstName} ${referrer.lastName}`,
+          userId: userId,
+          userEmail: userEmail,
+          userName: userName,
           availablePoints: directBonus,
           totalEarnedPoints: directBonus,
           totalWithdrawnPoints: 0,
@@ -255,23 +225,19 @@ export class UserPointsService {
 
       // Crear transacción de puntos usando TUS ENTIDADES
       const pointsTransaction = this.pointsTransactionRepository.create({
-        userId: referrer._id,
-        userEmail: referrer.email,
-        userName: `${referrer.firstName} ${referrer.lastName}`,
-        type: PointTransactionType.DIRECT_BONUS,
+        userId: referrerPoints.userId,
+        userEmail: referrerPoints.userEmail,
+        userName: referrerPoints.userName,
+        type,
         amount: directBonus,
         pendingAmount: 0,
         withdrawnAmount: 0,
         status: PointTransactionStatus.COMPLETED,
         isArchived: false,
         metadata: {
-          usuarioReferido: `${user.firstName} ${user.lastName}`,
-          usuarioReferidoId: user._id,
-          nombreDelPlan: userPlan.plan.name,
-          precioDelPlan: userPlan.plan.price,
-          comisionDirecta: referrerPlan.plan.directCommissionAmount,
-          bulkAssignment: true,
-          processedAt: new Date().toISOString(),
+          ...metadata,
+          'Puntos Anteriores': previousPoints,
+          'Puntos Actuales': currentPoints,
         },
       });
 
@@ -282,16 +248,14 @@ export class UserPointsService {
       const pointsTransactionPayment =
         this.pointsTransactionPaymentRepository.create({
           pointsTransaction: savedTransaction,
-          paymentId: paymmentId,
+          paymentId: paymentId,
           amount: directBonus,
           paymentReference: paymentReference,
           paymentMethod: 'DIRECT_BONUS',
-          notes: `Bono directo por compra de ${user.firstName} ${user.lastName}`,
+          notes: `Suma de puntos a ${referrerPoints.userName}`,
           metadata: {
-            referrerUserId: referrer._id,
-            referredUserId: user._id,
-            planComprado: userPlan.plan.name,
-            comisionAplicada: referrerPlan.plan.directCommissionAmount,
+            Usuario: referrerPoints.userId,
+            'Puntos Sumados': directBonus,
             bulkAssignment: true,
             processedAt: new Date().toISOString(),
           },
@@ -301,15 +265,16 @@ export class UserPointsService {
 
       // Agregar a processedItems
       const processedItem = new ProcessedDirectBonusDto();
-      processedItem.referrerUserId = referrer._id;
-      processedItem.referredUserId = user._id;
-      processedItem.bonusAmount = directBonus;
+      processedItem.referrerUserId = referrerPoints.userId;
+      processedItem.bonusPoints = directBonus;
       processedItem.paymentReference = paymentReference;
       processedItem.transactionId = savedTransaction.id;
+      processedItem.previousPoints = previousPoints;
+      processedItem.currentPoints = currentPoints;
       processedItems.push(processedItem);
 
       this.logger.log(
-        `Bono directo procesado: ${directBonus} puntos para el usuario ${referrer._id}`,
+        `Suma procesada: ${directBonus} puntos para el usuario ${referrerPoints.userId}`,
       );
     } catch (error) {
       const errorMessage = this.getErrorMessage(error);

@@ -12,6 +12,7 @@ import {
   CreateVolumeResponseDto,
   FailedVolumeDto,
   ProcessedVolumeDto,
+  VolumeUserAssignmentDto,
 } from './dto/create-volume.dto';
 import { StatsWeeklyVolumeDto } from './dto/stats-weekly-volume.dto';
 import { UsersService } from 'src/common/services/users.service';
@@ -46,24 +47,22 @@ export class WeeklyVolumeService {
       for (const userAssignment of addVolumeDto.users) {
         try {
           await this.updateWeeklyVolume(
-            userAssignment.id,
+            userAssignment,
             addVolumeDto.volume,
-            userAssignment.site,
-            userAssignment.paymentId,
             queryRunner,
             processedItems,
           );
 
           this.logger.log(
-            `Volumen semanal procesado para usuario ${userAssignment.id}: ${addVolumeDto.volume} en lado ${userAssignment.site}`,
+            `Volumen semanal procesado para usuario ${userAssignment.userId}: ${addVolumeDto.volume} en lado ${userAssignment.site}`,
           );
         } catch (error) {
           const errorMessage = this.getErrorMessage(error);
           this.logger.error(
-            `Error procesando usuario ${userAssignment.id}: ${errorMessage}`,
+            `Error procesando usuario ${userAssignment.userId}: ${errorMessage}`,
           );
           const failedItem = new FailedVolumeDto();
-          failedItem.userId = userAssignment.id;
+          failedItem.userId = userAssignment.userId;
           failedItem.reason = `Error al procesar: ${errorMessage}`;
           failedItems.push(failedItem);
         }
@@ -91,16 +90,14 @@ export class WeeklyVolumeService {
 
   // Lógica adaptada del monolítico - método updateWeeklyVolume
   private async updateWeeklyVolume(
-    userId: string,
+    userData: VolumeUserAssignmentDto,
     binaryPoints: number,
-    side: VolumeSide,
-    paymentId: string,
     queryRunner: QueryRunner,
     processedItems: ProcessedVolumeDto[],
   ) {
     try {
+      const { userId, userName, userEmail, site, paymentId } = userData;
       const { weekStartDate, weekEndDate } = this.getCurrentWeekDates();
-
       // Buscar volumen existente (igual que en monolítico)
       const existingVolume = await this.weeklyVolumeRepository.findOne({
         where: {
@@ -116,7 +113,7 @@ export class WeeklyVolumeService {
 
       if (existingVolume) {
         // Actualizar volumen existente (lógica del monolítico)
-        if (side === VolumeSide.LEFT) {
+        if (site === VolumeSide.LEFT) {
           existingVolume.leftVolume =
             Number(existingVolume.leftVolume) + Number(binaryPoints);
         } else {
@@ -128,17 +125,15 @@ export class WeeklyVolumeService {
         action = 'updated';
 
         this.logger.log(
-          `Volumen semanal actualizado para usuario ${userId}: +${binaryPoints} en lado ${side}`,
+          `Volumen semanal actualizado para usuario ${userId}: +${binaryPoints} en lado ${site}`,
         );
       } else {
-        // Crear nuevo volumen (lógica del monolítico)
-        const user = await this.usersService.getUser(userId);
         const newVolume = this.weeklyVolumeRepository.create({
           userId: userId,
-          userEmail: user.email,
-          userName: `${user.firstName} ${user.lastName}`,
-          leftVolume: side === VolumeSide.LEFT ? binaryPoints : 0,
-          rightVolume: side === VolumeSide.RIGHT ? binaryPoints : 0,
+          userEmail: userEmail,
+          userName: userName,
+          leftVolume: site === VolumeSide.LEFT ? binaryPoints : 0,
+          rightVolume: site === VolumeSide.RIGHT ? binaryPoints : 0,
           weekStartDate: weekStartDate,
           weekEndDate: weekEndDate,
           status: VolumeProcessingStatus.PENDING,
@@ -152,7 +147,7 @@ export class WeeklyVolumeService {
         action = 'created';
 
         this.logger.log(
-          `Nuevo volumen semanal creado para usuario ${userId}: ${binaryPoints} en lado ${side}`,
+          `Nuevo volumen semanal creado para usuario ${userId}: ${binaryPoints} en lado ${site}`,
         );
       }
 
@@ -163,7 +158,7 @@ export class WeeklyVolumeService {
       const history = this.weeklyVolumeHistoryRepository.create({
         weeklyVolume: savedWeeklyVolume,
         paymentId: paymentId,
-        volumeSide: side,
+        volumeSide: site,
         volume: binaryPoints,
         metadata: {
           bulkAssignment: true,
@@ -176,7 +171,7 @@ export class WeeklyVolumeService {
       // Agregar a processedItems
       const processedItem = new ProcessedVolumeDto();
       processedItem.userId = userId;
-      processedItem.side = side;
+      processedItem.side = site;
       processedItem.volumeAdded = binaryPoints;
       processedItem.action = action;
       processedItem.weeklyVolumeId = savedWeeklyVolume.id;
