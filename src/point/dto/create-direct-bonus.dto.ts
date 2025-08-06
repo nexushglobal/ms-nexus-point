@@ -25,11 +25,11 @@ export class DirectBonusUserDto {
 
   @IsString()
   @IsNotEmpty()
-  paymentReference: string; // Referencia del pago de este usuario
+  paymentReference?: string; // Referencia del pago de este usuario
 
   @IsNumber()
   @IsNotEmpty()
-  paymentId: number; // ID del pago de este usuario
+  paymentId?: number; // ID del pago de este usuario
 
   @IsNumber()
   @IsNotEmpty()

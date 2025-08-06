@@ -139,7 +139,7 @@ export class UserPointsService {
           failedItem.userId = userAssignment.userId;
           failedItem.userName = userAssignment.userName; // ¡Agregar este campo!
           failedItem.userEmail = userAssignment.userEmail; // ¡Agregar este campo!
-          failedItem.paymentReference = userAssignment.paymentReference;
+          failedItem.paymentReference = userAssignment.paymentReference || '';
           failedItem.reason = `Error al procesar: ${errorMessage}`;
           failedItems.push(failedItem);
         }
@@ -181,22 +181,17 @@ export class UserPointsService {
         paymentReference,
         paymentId,
       } = directBonusDto;
+      if (directBonus > 0) {
+        if (!paymentReference || !paymentId)
+          throw new RpcException({
+            status: HttpStatus.BAD_REQUEST,
+            message: `Se necesitan los campos paymentReference y paymentId`,
+          });
+      }
       // Buscar el referente (igual que en el monolítico)
       let referrerPoints = await this.userPointsRepository.findOne({
         where: { userId },
       });
-      // if (referrerPoints) {
-      //   const referrerMembership =
-      //     await this.membershipService.getUserMembershipInfo(
-      //       referrerPoints.userId,
-      //     );
-      //   if (!referrerMembership || !referrerMembership.plan)
-      //     throw new RpcException({
-      //       status: HttpStatus.NOT_FOUND,
-      //       message: `El referente ${referrerPoints.userId} no tiene una membresía activa`,
-      //     });
-      // }
-
       let previousPoints = 0;
       let currentPoints = directBonus;
 
@@ -271,7 +266,7 @@ export class UserPointsService {
       const processedItem = new ProcessedDirectBonusDto();
       processedItem.referrerUserId = referrerPoints.userId;
       processedItem.bonusPoints = directBonus;
-      processedItem.paymentReference = paymentReference;
+      processedItem.paymentReference = paymentReference || '';
       processedItem.transactionId = savedTransaction.id;
       processedItem.previousPoints = previousPoints;
       processedItem.currentPoints = currentPoints;
