@@ -11,7 +11,7 @@ import {
 import { Rank } from './rank.entity';
 
 @Entity('user_ranks')
-@Index(['user'])
+@Index(['userId'])
 export class UserRank {
   @PrimaryGeneratedColumn()
   id: number;
