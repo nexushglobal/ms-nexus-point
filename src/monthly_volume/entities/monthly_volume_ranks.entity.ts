@@ -66,7 +66,7 @@ export class MonthlyVolumeRank {
   @Column({
     type: 'decimal',
     precision: 10,
-    name: 'left_volume',
+    name: 'right_volume',
     scale: 2,
     default: 0,
     transformer: {

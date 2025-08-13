@@ -7,6 +7,6 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 @Module({
   imports: [TypeOrmModule.forFeature([MonthlyVolumeRank])],
   controllers: [MonthlyVolumeController],
-  providers: [MonthlyVolumeService],
+  providers: [MonthlyVolumeService, TypeOrmModule],
 })
 export class MonthlyVolumeModule {}
