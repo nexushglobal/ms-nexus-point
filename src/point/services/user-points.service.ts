@@ -72,6 +72,18 @@ export class UserPointsService {
     };
   }
 
+  async findOne(userId: string) {
+    const user = await this.userPointsRepository.findOne({
+      where: { userId },
+    });
+    if (!user)
+      throw new RpcException({
+        status: HttpStatus.NOT_FOUND,
+        message: `Usuario con ID ${userId} no encontrado`,
+      });
+    return user;
+  }
+
   async getUserLotPoints(userId: string) {
     const user = await this.usersService.getUser(userId);
     if (!user)

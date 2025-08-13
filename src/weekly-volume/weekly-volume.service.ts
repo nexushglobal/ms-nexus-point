@@ -88,7 +88,6 @@ export class WeeklyVolumeService {
     }
   }
 
-  // Lógica adaptada del monolítico - método updateWeeklyVolume
   private async updateWeeklyVolume(
     userData: VolumeUserAssignmentDto,
     binaryPoints: number,
