@@ -6,6 +6,7 @@ import { WeeklyVolumeModule } from './weekly-volume/weekly-volume.module';
 import { CommonModule } from './common/common.module';
 import { MessagingModule } from './messaging/messaging.module';
 import { RankModule } from './rank/rank.module';
+import { MonthlyVolumeModule } from './monthly_volume/monthly_volume.module';
 
 @Module({
   imports: [
@@ -17,6 +18,7 @@ import { RankModule } from './rank/rank.module';
     CommonModule,
     MessagingModule.register(),
     RankModule,
+    MonthlyVolumeModule,
   ],
   controllers: [],
   providers: [],
