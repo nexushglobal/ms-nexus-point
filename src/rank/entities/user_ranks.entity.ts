@@ -36,9 +36,9 @@ export class UserRank {
   @Column({ type: 'jsonb', nullable: true })
   metadata?: Record<string, any>;
 
-  @CreateDateColumn()
+  @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 
-  @UpdateDateColumn()
+  @UpdateDateColumn({ name: 'updated_at' })
   updatedAt: Date;
 }
