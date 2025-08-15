@@ -42,7 +42,6 @@ export class UserPointsService {
         status: HttpStatus.NOT_FOUND,
         message: `Usuario con ID ${userId} no encontrado`,
       });
-    // try {
     let userPoints = await this.userPointsRepository.findOne({
       where: { userId },
     });
@@ -57,18 +56,12 @@ export class UserPointsService {
       });
       await this.userPointsRepository.save(userPoints);
     }
-    const membershipInfo =
-      await this.membershipService.getUserMembershipInfo(userId);
-    await this.pointsEventsService.emitPointsUpdate(userId, membershipInfo);
+
+    await this.pointsEventsService.emitPointsUpdate(userId);
     return {
       availablePoints: userPoints.availablePoints,
       totalEarnedPoints: userPoints.totalEarnedPoints,
       totalWithdrawnPoints: userPoints.totalWithdrawnPoints,
-      membershipPlan: membershipInfo.plan
-        ? {
-            name: membershipInfo.plan.name,
-          }
-        : null,
     };
   }
 
@@ -100,17 +93,11 @@ export class UserPointsService {
         status: HttpStatus.NOT_FOUND,
         message: `Usuario con ID ${userId} no tiene puntos`,
       });
-    const membershipInfo =
-      await this.membershipService.getUserMembershipInfo(userId);
+
     return {
       availableLotPoints: userPoints.availableLotPoints | 0,
       totalEarnedLotPoints: userPoints.totalEarnedLotPoints | 0,
       totalWithdrawnLotPoints: userPoints.totalWithdrawnLotPoints | 0,
-      membershipPlan: membershipInfo.plan
-        ? {
-            name: membershipInfo.plan.name,
-          }
-        : null,
     };
   }
 

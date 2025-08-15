@@ -16,6 +16,17 @@ import {
 } from './dto/create-volume.dto';
 import { StatsWeeklyVolumeDto } from './dto/stats-weekly-volume.dto';
 import { UsersService } from 'src/common/services/users.service';
+import {
+  GetUserWeeklyVolumesDto,
+  WeeklyVolumeResponseDto,
+} from './dto/get-user-weekly-volumes.dto';
+import { GetWeeklyVolumeDetailDto } from './dto/get-weekly-volume-detail.dto';
+import {
+  GetWeeklyVolumeHistoryDto,
+  WeeklyVolumeHistoryResponseDto,
+} from './dto/get-weekly-volume-history.dto';
+import { Paginated } from 'src/common/dto/paginated.dto';
+import { paginate } from 'src/common/helpers/paginate.helper';
 
 @Injectable()
 export class WeeklyVolumeService {
@@ -200,16 +211,6 @@ export class WeeklyVolumeService {
     return { weekStartDate, weekEndDate };
   }
 
-  // Método para obtener volúmenes de un usuario específico
-  async getUserWeeklyVolumes(userId: string, limit: number = 10) {
-    return await this.weeklyVolumeRepository.find({
-      where: { userId },
-      relations: ['history'],
-      order: { weekStartDate: 'DESC' },
-      take: limit,
-    });
-  }
-
   // Método para obtener estadísticas de volúmenes por semana
   async getWeeklyVolumeStats(weekStartDate: Date, weekEndDate: Date) {
     const stats: StatsWeeklyVolumeDto | undefined =
@@ -242,6 +243,147 @@ export class WeeklyVolumeService {
       pendingCount: parseInt(stats.pendingCount) || 0,
       processedCount: parseInt(stats.processedCount) || 0,
     };
+  }
+
+  /**
+   * Obtiene la lista paginada de todos los WeeklyVolume de un usuario
+   */
+  async getUserWeeklyVolumes(
+    dto: GetUserWeeklyVolumesDto,
+  ): Promise<Paginated<WeeklyVolumeResponseDto>> {
+    try {
+      const queryBuilder = this.weeklyVolumeRepository
+        .createQueryBuilder('wv')
+        .where('wv.userId = :userId', { userId: dto.userId });
+
+      // Aplicar filtro por status si se proporciona
+      if (dto.status) {
+        queryBuilder.andWhere('wv.status = :status', { status: dto.status });
+      }
+
+      // Aplicar filtro por fecha de inicio si se proporciona
+      if (dto.startDate) {
+        queryBuilder.andWhere('wv.weekStartDate >= :startDate', {
+          startDate: new Date(dto.startDate),
+        });
+      }
+
+      // Aplicar filtro por fecha de fin si se proporciona
+      if (dto.endDate) {
+        queryBuilder.andWhere('wv.weekEndDate <= :endDate', {
+          endDate: new Date(dto.endDate),
+        });
+      }
+
+      // Ordenar por fecha de creación descendente
+      queryBuilder.orderBy('wv.createdAt', 'DESC');
+
+      const weeklyVolumes = await queryBuilder.getMany();
+
+      const weeklyVolumeResponses: WeeklyVolumeResponseDto[] =
+        weeklyVolumes.map((volume) => ({
+          id: volume.id,
+          leftVolume: volume.leftVolume,
+          rightVolume: volume.rightVolume,
+          commissionEarned: volume.commissionEarned,
+          weekStartDate: volume.weekStartDate,
+          weekEndDate: volume.weekEndDate,
+          status: volume.status,
+          selectedSide: volume.selectedSide,
+          processedAt: volume.processedAt,
+          metadata: volume.metadata,
+          createdAt: volume.createdAt,
+          updatedAt: volume.updatedAt,
+        }));
+
+      return await paginate(weeklyVolumeResponses, dto);
+    } catch (error) {
+      this.logger.error(
+        `Error al obtener WeeklyVolumes del usuario ${dto.userId}: ${this.getErrorMessage(error)}`,
+      );
+      throw error;
+    }
+  }
+
+  /**
+   * Obtiene el detalle de un WeeklyVolume específico por ID
+   */
+  async getWeeklyVolumeDetail(
+    dto: GetWeeklyVolumeDetailDto,
+  ): Promise<WeeklyVolumeResponseDto> {
+    try {
+      const weeklyVolume = await this.weeklyVolumeRepository.findOne({
+        where: { id: dto.id },
+      });
+
+      if (!weeklyVolume) {
+        throw new Error(`WeeklyVolume con ID ${dto.id} no encontrado`);
+      }
+
+      return {
+        id: weeklyVolume.id,
+        leftVolume: weeklyVolume.leftVolume,
+        rightVolume: weeklyVolume.rightVolume,
+        commissionEarned: weeklyVolume.commissionEarned,
+        weekStartDate: weeklyVolume.weekStartDate,
+        weekEndDate: weeklyVolume.weekEndDate,
+        status: weeklyVolume.status,
+        selectedSide: weeklyVolume.selectedSide,
+        processedAt: weeklyVolume.processedAt,
+        metadata: weeklyVolume.metadata,
+        createdAt: weeklyVolume.createdAt,
+        updatedAt: weeklyVolume.updatedAt,
+      };
+    } catch (error) {
+      this.logger.error(
+        `Error al obtener detalle del WeeklyVolume ${dto.id}: ${this.getErrorMessage(error)}`,
+      );
+      throw error;
+    }
+  }
+
+  /**
+   * Obtiene el historial paginado de un WeeklyVolume específico
+   */
+  async getWeeklyVolumeHistory(
+    dto: GetWeeklyVolumeHistoryDto,
+  ): Promise<Paginated<WeeklyVolumeHistoryResponseDto>> {
+    try {
+      // Verificar que el WeeklyVolume existe
+      const weeklyVolume = await this.weeklyVolumeRepository.findOne({
+        where: { id: dto.weeklyVolumeId },
+      });
+
+      if (!weeklyVolume) {
+        throw new Error(
+          `WeeklyVolume con ID ${dto.weeklyVolumeId} no encontrado`,
+        );
+      }
+
+      const history = await this.weeklyVolumeHistoryRepository.find({
+        where: { weeklyVolume: { id: dto.weeklyVolumeId } },
+        order: { createdAt: 'DESC' },
+      });
+
+      const historyResponses: WeeklyVolumeHistoryResponseDto[] = history.map(
+        (historyItem) => ({
+          id: historyItem.id,
+          paymentId: historyItem.paymentId,
+          volumeSide: historyItem.volumeSide,
+          volume: historyItem.volume,
+          metadata: historyItem.metadata,
+          createdAt: historyItem.createdAt,
+          updatedAt: historyItem.updatedAt,
+        }),
+      );
+
+      return await paginate(historyResponses, dto);
+    } catch (error) {
+      this.logger.error(
+        `Error al obtener historial del WeeklyVolume ${dto.weeklyVolumeId}: ${this.getErrorMessage(error)}`,
+      );
+      throw error;
+    }
   }
 
   private getErrorMessage(error: unknown): string {

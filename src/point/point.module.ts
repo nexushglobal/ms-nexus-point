@@ -10,23 +10,37 @@ import { EventEmitterModule } from '@nestjs/event-emitter';
 import { PointsTransactionController } from './controllers/points-transaction.controller';
 import { PointsEventsService } from './services/points-events.service';
 import { PointsTransactionService } from './services/points-transaction.service';
+import { LotPointsTransactionController } from './controllers/points-lots-transaction.controller';
+import { LotPointsTransactionService } from './services/points-lots-transaction.service';
+import { LotPointsTransaction } from './entities/points-lots-transaction.entity';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([
       PointsTransaction,
       UserPoints,
+      LotPointsTransaction,
       PointsTransactionPayment,
     ]),
     EventEmitterModule.forRoot(),
     CommonModule,
   ],
-  controllers: [UserPointsController, PointsTransactionController],
-  providers: [UserPointsService, PointsEventsService, PointsTransactionService],
+  controllers: [
+    UserPointsController,
+    LotPointsTransactionController,
+    PointsTransactionController,
+  ],
+  providers: [
+    UserPointsService,
+    PointsEventsService,
+    PointsTransactionService,
+    LotPointsTransactionService,
+  ],
   exports: [
     UserPointsService,
     PointsEventsService,
     PointsTransactionService,
+    LotPointsTransactionService,
     TypeOrmModule,
   ],
 })

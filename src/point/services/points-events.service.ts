@@ -4,7 +4,6 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { UserPoints } from '../entities/user-points.entity';
-import { UserMembershipInfoResponse } from '../interfaces/user-membership-info-response.interface';
 
 @Injectable()
 export class PointsEventsService {
@@ -16,10 +15,7 @@ export class PointsEventsService {
     private readonly userPointsRepository: Repository<UserPoints>,
   ) {}
 
-  async emitPointsUpdate(
-    userId: string,
-    membershipInfo: UserMembershipInfoResponse,
-  ): Promise<void> {
+  async emitPointsUpdate(userId: string): Promise<void> {
     try {
       const userPoints = await this.userPointsRepository.findOne({
         where: { userId },
@@ -34,11 +30,6 @@ export class PointsEventsService {
         availablePoints: userPoints.availablePoints,
         totalEarnedPoints: userPoints.totalEarnedPoints,
         totalWithdrawnPoints: userPoints.totalWithdrawnPoints,
-        membershipPlan: membershipInfo.plan
-          ? {
-              name: membershipInfo.plan.name,
-            }
-          : null,
       };
 
       this.eventEmitter.emit('points.updated', {
