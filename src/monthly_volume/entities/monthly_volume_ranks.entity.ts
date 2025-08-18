@@ -24,7 +24,8 @@ export class MonthlyVolumeRank {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column({ name: 'user_id', unique: true })
+  @Column({ name: 'user_id' })
+  @Index()
   userId: string; // UUID del usuario desde el microservicio de usuarios
 
   @Column({ name: 'user_email' })
@@ -32,7 +33,6 @@ export class MonthlyVolumeRank {
 
   @Column({ name: 'user_name', nullable: true })
   userName?: string; // Nombre completo para referencia
-
   @ManyToOne(() => Rank, { nullable: true })
   @JoinColumn({ name: 'assigned_rank_id' })
   assignedRank?: Rank;
