@@ -12,12 +12,16 @@ import { PointsEventsService } from './services/points-events.service';
 import { PointsTransactionService } from './services/points-transaction.service';
 import { PointsTransactionPaymentsController } from './controllers/points-transaction-payments.controller';
 import { PointsTransactionsPaymentService } from './services/points-transactions-payment.service';
+import { LotPointsTransactionController } from './controllers/points-lots-transaction.controller';
+import { LotPointsTransactionService } from './services/points-lots-transaction.service';
+import { LotPointsTransaction } from './entities/points-lots-transaction.entity';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([
       PointsTransaction,
       UserPoints,
+      LotPointsTransaction,
       PointsTransactionPayment,
     ]),
     EventEmitterModule.forRoot(),
@@ -27,17 +31,20 @@ import { PointsTransactionsPaymentService } from './services/points-transactions
     UserPointsController,
     PointsTransactionController,
     PointsTransactionPaymentsController,
+    LotPointsTransactionController,
   ],
   providers: [
     UserPointsService,
     PointsEventsService,
     PointsTransactionService,
     PointsTransactionsPaymentService,
+    LotPointsTransactionService,
   ],
   exports: [
     UserPointsService,
     PointsEventsService,
     PointsTransactionService,
+    LotPointsTransactionService,
     TypeOrmModule,
   ],
 })

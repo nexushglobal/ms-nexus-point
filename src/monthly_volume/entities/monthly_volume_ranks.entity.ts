@@ -24,7 +24,8 @@ export class MonthlyVolumeRank {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column({ name: 'user_id', unique: true })
+  @Column({ name: 'user_id' })
+  @Index()
   userId: string; // UUID del usuario desde el microservicio de usuarios
 
   @Column({ name: 'user_email' })
@@ -32,7 +33,6 @@ export class MonthlyVolumeRank {
 
   @Column({ name: 'user_name', nullable: true })
   userName?: string; // Nombre completo para referencia
-
   @ManyToOne(() => Rank, { nullable: true })
   @JoinColumn({ name: 'assigned_rank_id' })
   assignedRank?: Rank;
@@ -40,6 +40,7 @@ export class MonthlyVolumeRank {
   @Column({
     type: 'decimal',
     precision: 10,
+    name: 'total_volume',
     scale: 2,
     default: 0,
     transformer: {
@@ -52,6 +53,7 @@ export class MonthlyVolumeRank {
   @Column({
     type: 'decimal',
     precision: 10,
+    name: 'left_volume',
     scale: 2,
     default: 0,
     transformer: {
@@ -64,6 +66,7 @@ export class MonthlyVolumeRank {
   @Column({
     type: 'decimal',
     precision: 10,
+    name: 'right_volume',
     scale: 2,
     default: 0,
     transformer: {
@@ -75,6 +78,7 @@ export class MonthlyVolumeRank {
 
   @Column({
     type: 'int',
+    name: 'left_directs',
     default: 0,
   })
   leftDirects: number;
@@ -82,13 +86,14 @@ export class MonthlyVolumeRank {
   @Column({
     type: 'int',
     default: 0,
+    name: 'right_directs',
   })
   rightDirects: number;
 
-  @Column({ type: 'date' })
+  @Column({ type: 'date', name: 'month_start_date' })
   monthStartDate: Date;
 
-  @Column({ type: 'date' })
+  @Column({ type: 'date', name: 'month_end_date' })
   monthEndDate: Date;
 
   @Column({
@@ -101,9 +106,9 @@ export class MonthlyVolumeRank {
   @Column({ type: 'jsonb', nullable: true })
   metadata?: Record<string, any>;
 
-  @CreateDateColumn()
+  @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 
-  @UpdateDateColumn()
+  @UpdateDateColumn({ name: 'updated_at' })
   updatedAt: Date;
 }
