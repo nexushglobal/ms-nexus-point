@@ -113,6 +113,8 @@ export class PointsTransactionService extends BaseService<PointsTransaction> {
 
   async reserveForWithdrawal(
     userId: string,
+    userEmail: string,
+    userName: string,
     amount: number,
   ): Promise<ReserveForWithdrawal> {
     const queryRunner = this.dataSource.createQueryRunner();
@@ -121,7 +123,7 @@ export class PointsTransactionService extends BaseService<PointsTransaction> {
 
     try {
       // 1. Verificar puntos del usuario
-      const userPoints = await this.userPointsService.getUserPoints(userId);
+      const userPoints = await this.userPointsService.findOne(userId);
       if (!userPoints)
         throw new RpcException({
           status: HttpStatus.BAD_REQUEST,
@@ -191,6 +193,8 @@ export class PointsTransactionService extends BaseService<PointsTransaction> {
       // 7. Crear transacción WITHDRAWAL
       const pointsTransaction = this.pointsTransactionRepository.create({
         userId,
+        userEmail: userEmail,
+        userName: userName,
         type: PointTransactionType.WITHDRAWAL,
         amount,
         status: PointTransactionStatus.PENDING,

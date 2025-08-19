@@ -9,4 +9,15 @@ export class PointsTransactionsPaymentService {
     @InjectRepository(PointsTransactionPayment)
     private readonly pointsTransactionsPaymentRepository: Repository<PointsTransactionPayment>,
   ) {}
+
+  async findPaymentsByTransactionId(transactionId: string) {
+    const payments = await this.pointsTransactionsPaymentRepository
+      .createQueryBuilder('payment')
+      .select(['payment.paymentId'])
+      .where('payment.pointsTransaction = :transactionId', {
+        transactionId: parseInt(transactionId),
+      })
+      .getMany();
+    return payments.map((p) => ({ paymentId: p.paymentId.toString() }));
+  }
 }

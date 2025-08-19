@@ -30,10 +30,18 @@ export class PointsTransactionController {
 
   @MessagePattern({ cmd: 'pointsTransaction.reserveForWithdrawal' })
   async eligiblePointsTransactions(
-    @Payload() data: { userId: string; amount: number },
+    @Payload()
+    data: {
+      userId: string;
+      userName: string;
+      userEmail: string;
+      amount: number;
+    },
   ) {
     return this.pointsTransactionService.reserveForWithdrawal(
       data.userId,
+      data.userName,
+      data.userEmail,
       data.amount,
     );
   }

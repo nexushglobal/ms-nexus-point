@@ -10,6 +10,8 @@ import { EventEmitterModule } from '@nestjs/event-emitter';
 import { PointsTransactionController } from './controllers/points-transaction.controller';
 import { PointsEventsService } from './services/points-events.service';
 import { PointsTransactionService } from './services/points-transaction.service';
+import { PointsTransactionPaymentsController } from './controllers/points-transaction-payments.controller';
+import { PointsTransactionsPaymentService } from './services/points-transactions-payment.service';
 
 @Module({
   imports: [
@@ -21,8 +23,17 @@ import { PointsTransactionService } from './services/points-transaction.service'
     EventEmitterModule.forRoot(),
     CommonModule,
   ],
-  controllers: [UserPointsController, PointsTransactionController],
-  providers: [UserPointsService, PointsEventsService, PointsTransactionService],
+  controllers: [
+    UserPointsController,
+    PointsTransactionController,
+    PointsTransactionPaymentsController,
+  ],
+  providers: [
+    UserPointsService,
+    PointsEventsService,
+    PointsTransactionService,
+    PointsTransactionsPaymentService,
+  ],
   exports: [
     UserPointsService,
     PointsEventsService,
