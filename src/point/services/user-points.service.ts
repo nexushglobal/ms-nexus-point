@@ -288,4 +288,71 @@ export class UserPointsService {
       return String(error.message);
     return 'Error desconocido';
   }
+
+  async checkWithdrawalEligibility(userId: string): Promise<{
+    canWithdraw: boolean;
+    availablePoints: number;
+    hasMinimumPoints: boolean;
+    minimumRequired: number;
+  }> {
+    try {
+      this.logger.log(`🔍 Verificando elegibilidad de retiro para usuario: ${userId}`);
+
+      // Verificar si el usuario existe
+      const user = await this.usersService.getUser(userId);
+      if (!user) {
+        throw new RpcException({
+          status: HttpStatus.NOT_FOUND,
+          message: `Usuario con ID ${userId} no encontrado`,
+        });
+      }
+
+      // Obtener puntos del usuario
+      let userPoints = await this.userPointsRepository.findOne({
+        where: { userId },
+      });
+
+      if (!userPoints) {
+        // Si no tiene puntos, crear el registro con puntos en cero
+        userPoints = this.userPointsRepository.create({
+          userId: user.id,
+          userName: user.lastName,
+          userEmail: user.email,
+          availablePoints: 0,
+          totalEarnedPoints: 0,
+          totalWithdrawnPoints: 0,
+        });
+        await this.userPointsRepository.save(userPoints);
+      }
+
+      const minimumRequired = 100;
+      const availablePoints = Number(userPoints.availablePoints);
+      const hasMinimumPoints = availablePoints >= minimumRequired;
+
+      this.logger.log(
+        `✅ Usuario ${userId} - Puntos disponibles: ${availablePoints}, Mínimo requerido: ${minimumRequired}`,
+      );
+
+      return {
+        canWithdraw: hasMinimumPoints,
+        availablePoints,
+        hasMinimumPoints,
+        minimumRequired,
+      };
+    } catch (error) {
+      this.logger.error(
+        `❌ Error verificando elegibilidad de retiro para usuario ${userId}:`,
+        error,
+      );
+
+      if (error instanceof RpcException) {
+        throw error;
+      }
+
+      throw new RpcException({
+        status: HttpStatus.INTERNAL_SERVER_ERROR,
+        message: 'Error interno al verificar elegibilidad de retiro',
+      });
+    }
+  }
 }

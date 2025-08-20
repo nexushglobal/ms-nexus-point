@@ -21,4 +21,9 @@ export class UserPointsController {
   async createDirectBonus(@Payload() data: CreateDirectBonusDto) {
     return this.userPointsService.createDirectBonus(data);
   }
+
+  @MessagePattern({ cmd: 'userPoints.checkWithdrawalEligibility' })
+  async checkWithdrawalEligibility(@Payload() data: { userId: string }) {
+    return this.userPointsService.checkWithdrawalEligibility(data.userId);
+  }
 }
