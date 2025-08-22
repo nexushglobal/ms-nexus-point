@@ -26,4 +26,9 @@ export class UserPointsController {
   async checkWithdrawalEligibility(@Payload() data: { userId: string }) {
     return this.userPointsService.checkWithdrawalEligibility(data.userId);
   }
+
+  @MessagePattern({ cmd: 'userDashboard.get' })
+  async getUserDashboard(@Payload() data: { userId: string }) {
+    return this.userPointsService.getUserDashboard(data.userId);
+  }
 }

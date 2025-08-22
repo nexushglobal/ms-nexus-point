@@ -15,6 +15,9 @@ import { PointsTransactionsPaymentService } from './services/points-transactions
 import { LotPointsTransactionController } from './controllers/points-lots-transaction.controller';
 import { LotPointsTransactionService } from './services/points-lots-transaction.service';
 import { LotPointsTransaction } from './entities/points-lots-transaction.entity';
+import { WeeklyVolume } from '../weekly-volume/entities/weekly-volume.entity';
+import { MonthlyVolumeRank } from '../monthly_volume/entities/monthly_volume_ranks.entity';
+import { UserRank } from '../rank/entities/user_ranks.entity';
 
 @Module({
   imports: [
@@ -23,6 +26,9 @@ import { LotPointsTransaction } from './entities/points-lots-transaction.entity'
       UserPoints,
       LotPointsTransaction,
       PointsTransactionPayment,
+      WeeklyVolume,
+      MonthlyVolumeRank,
+      UserRank,
     ]),
     EventEmitterModule.forRoot(),
     CommonModule,

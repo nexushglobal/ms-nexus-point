@@ -24,7 +24,10 @@ export class UsersService {
     );
   }
 
-  async checkMinDepthLevels(userId: string, minDepthLevels: number): Promise<boolean> {
+  async checkMinDepthLevels(
+    userId: string,
+    minDepthLevels: number,
+  ): Promise<boolean> {
     return await this.client.send(
       { cmd: 'user.tree.checkMinDepthLevels' },
       { userId, minDepthLevels },
