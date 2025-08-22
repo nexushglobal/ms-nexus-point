@@ -18,6 +18,17 @@ import {
   PointTransactionStatus,
 } from '../entities/points-transaction.entity';
 import { PointsTransactionPayment } from '../entities/points-transaction-payment.entity';
+import { DashboardResponseDto } from '../dto/dashboard-response.dto';
+import {
+  WeeklyVolume,
+  VolumeProcessingStatus,
+} from '../../weekly-volume/entities/weekly-volume.entity';
+import {
+  MonthlyVolumeRank,
+  MonthlyVolumeStatus,
+} from '../../monthly_volume/entities/monthly_volume_ranks.entity';
+import { UserRank } from '../../rank/entities/user_ranks.entity';
+import { getWeekDates, getMonthDates } from '../../common/helpers/dates';
 
 @Injectable()
 export class UserPointsService {
@@ -29,6 +40,12 @@ export class UserPointsService {
     private readonly pointsTransactionRepository: Repository<PointsTransaction>,
     @InjectRepository(PointsTransactionPayment)
     private readonly pointsTransactionPaymentRepository: Repository<PointsTransactionPayment>,
+    @InjectRepository(WeeklyVolume)
+    private readonly weeklyVolumeRepository: Repository<WeeklyVolume>,
+    @InjectRepository(MonthlyVolumeRank)
+    private readonly monthlyVolumeRankRepository: Repository<MonthlyVolumeRank>,
+    @InjectRepository(UserRank)
+    private readonly userRankRepository: Repository<UserRank>,
     private readonly usersService: UsersService,
     private readonly membershipService: MembershipService,
     private readonly pointsEventsService: PointsEventsService,
@@ -287,5 +304,178 @@ export class UserPointsService {
     if (error && typeof error === 'object' && 'message' in error)
       return String(error.message);
     return 'Error desconocido';
+  }
+
+  async checkWithdrawalEligibility(userId: string): Promise<{
+    canWithdraw: boolean;
+    availablePoints: number;
+    hasMinimumPoints: boolean;
+    minimumRequired: number;
+  }> {
+    try {
+      this.logger.log(
+        `🔍 Verificando elegibilidad de retiro para usuario: ${userId}`,
+      );
+
+      // Verificar si el usuario existe
+      const user = await this.usersService.getUser(userId);
+      if (!user) {
+        throw new RpcException({
+          status: HttpStatus.NOT_FOUND,
+          message: `Usuario con ID ${userId} no encontrado`,
+        });
+      }
+
+      // Obtener puntos del usuario
+      let userPoints = await this.userPointsRepository.findOne({
+        where: { userId },
+      });
+
+      if (!userPoints) {
+        // Si no tiene puntos, crear el registro con puntos en cero
+        userPoints = this.userPointsRepository.create({
+          userId: user.id,
+          userName: user.lastName,
+          userEmail: user.email,
+          availablePoints: 0,
+          totalEarnedPoints: 0,
+          totalWithdrawnPoints: 0,
+        });
+        await this.userPointsRepository.save(userPoints);
+      }
+
+      const minimumRequired = 100;
+      const availablePoints = Number(userPoints.availablePoints);
+      const hasMinimumPoints = availablePoints >= minimumRequired;
+
+      this.logger.log(
+        `✅ Usuario ${userId} - Puntos disponibles: ${availablePoints}, Mínimo requerido: ${minimumRequired}`,
+      );
+
+      return {
+        canWithdraw: hasMinimumPoints,
+        availablePoints,
+        hasMinimumPoints,
+        minimumRequired,
+      };
+    } catch (error) {
+      this.logger.error(
+        `❌ Error verificando elegibilidad de retiro para usuario ${userId}:`,
+        error,
+      );
+
+      if (error instanceof RpcException) {
+        throw error;
+      }
+
+      throw new RpcException({
+        status: HttpStatus.INTERNAL_SERVER_ERROR,
+        message: 'Error interno al verificar elegibilidad de retiro',
+      });
+    }
+  }
+
+  async getUserDashboard(userId: string): Promise<DashboardResponseDto> {
+    try {
+      this.logger.log(`Getting dashboard data for user: ${userId}`);
+
+      const user = await this.usersService.getUser(userId);
+      if (!user) {
+        throw new RpcException({
+          status: HttpStatus.NOT_FOUND,
+          message: `Usuario con ID ${userId} no encontrado`,
+        });
+      }
+
+      let userPoints = await this.userPointsRepository.findOne({
+        where: { userId },
+      });
+
+      if (!userPoints) {
+        userPoints = this.userPointsRepository.create({
+          userId: user.id,
+          userName: user.lastName,
+          userEmail: user.email,
+          availablePoints: 0,
+          totalEarnedPoints: 0,
+          totalWithdrawnPoints: 0,
+          availableLotPoints: 0,
+          totalEarnedLotPoints: 0,
+          totalWithdrawnLotPoints: 0,
+        });
+        await this.userPointsRepository.save(userPoints);
+      }
+
+      const { monthStart, monthEnd } = getMonthDates();
+      const { weekStart, weekEnd } = getWeekDates();
+
+      const monthlyVolume = await this.monthlyVolumeRankRepository.findOne({
+        where: {
+          userId,
+          status: MonthlyVolumeStatus.PENDING,
+          monthStartDate: monthStart,
+          monthEndDate: monthEnd,
+        },
+      });
+
+      const weeklyVolume = await this.weeklyVolumeRepository.findOne({
+        where: {
+          userId,
+          status: VolumeProcessingStatus.PENDING,
+          weekStartDate: weekStart,
+          weekEndDate: weekEnd,
+        },
+      });
+
+      const userRank = await this.userRankRepository.findOne({
+        where: { userId },
+        relations: ['currentRank'],
+      });
+
+      const response: DashboardResponseDto = {
+        availablePoints: userPoints.availablePoints || 0,
+        availableLotPoints: userPoints.availableLotPoints || 0,
+      };
+
+      if (monthlyVolume) {
+        response.monthlyVolume = {
+          leftVolume: monthlyVolume.leftVolume,
+          rightVolume: monthlyVolume.rightVolume,
+          monthStartDate: monthlyVolume.monthStartDate,
+          monthEndDate: monthlyVolume.monthEndDate,
+        };
+      }
+
+      if (userRank?.currentRank) {
+        response.rank = {
+          name: userRank.currentRank.name,
+        };
+      }
+
+      if (weeklyVolume) {
+        response.weeklyVolume = {
+          leftVolume: weeklyVolume.leftVolume,
+          rightVolume: weeklyVolume.rightVolume,
+          weekStartDate: weeklyVolume.weekStartDate,
+          weekEndDate: weeklyVolume.weekEndDate,
+        };
+      }
+
+      return response;
+    } catch (error) {
+      this.logger.error(
+        `Error getting dashboard data for user ${userId}:`,
+        error,
+      );
+
+      if (error instanceof RpcException) {
+        throw error;
+      }
+
+      throw new RpcException({
+        status: HttpStatus.INTERNAL_SERVER_ERROR,
+        message: 'Error interno al obtener datos del dashboard',
+      });
+    }
   }
 }

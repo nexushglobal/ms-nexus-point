@@ -23,4 +23,21 @@ export class UsersService {
       { code: referralCode },
     );
   }
+
+  async checkMinDepthLevels(
+    userId: string,
+    minDepthLevels: number,
+  ): Promise<boolean> {
+    return await this.client.send(
+      { cmd: 'user.tree.checkMinDepthLevels' },
+      { userId, minDepthLevels },
+    );
+  }
+
+  async getDirectReferrals(userId: string): Promise<string[]> {
+    return await this.client.send(
+      { cmd: 'user.tree.getDirectReferrals' },
+      { userId },
+    );
+  }
 }

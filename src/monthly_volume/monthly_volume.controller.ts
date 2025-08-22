@@ -8,8 +8,8 @@ import { CreateMonthlyVolumeDto } from './dto/create-monthly-volume.dto';
 export class MonthlyVolumeController {
   constructor(private readonly monthlyVolumeService: MonthlyVolumeService) {}
 
-  @MessagePattern('monthly_volume.getUserMonthlyVolumes')
-  getUserMonthlyVolumes(
+  @MessagePattern({ cmd: 'monthlyVolume.getUserMonthlyVolumes' })
+  async getUserMonthlyVolumes(
     @Payload() getUserMonthlyVolumesDto: GetUserMonthlyVolumesDto,
   ) {
     return this.monthlyVolumeService.getUserMonthlyVolumes(
