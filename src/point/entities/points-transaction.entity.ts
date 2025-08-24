@@ -15,6 +15,7 @@ export enum PointTransactionType {
   BINARY_COMMISSION = 'BINARY_COMMISSION',
   DIRECT_BONUS = 'DIRECT_BONUS',
   WITHDRAWAL = 'WITHDRAWAL',
+  PAYMENT_DEDUCTION = 'PAYMENT_DEDUCTION',
 }
 
 export enum PointTransactionStatus {

@@ -16,6 +16,7 @@ import {
 import {
   PointsTransaction,
   PointTransactionStatus,
+  PointTransactionType,
 } from '../entities/points-transaction.entity';
 import { PointsTransactionPayment } from '../entities/points-transaction-payment.entity';
 import { DashboardResponseDto } from '../dto/dashboard-response.dto';
@@ -304,6 +305,113 @@ export class UserPointsService {
     if (error && typeof error === 'object' && 'message' in error)
       return String(error.message);
     return 'Error desconocido';
+  }
+
+  async deductPointsForPayment(
+    userId: string,
+    userName: string,
+    userEmail: string,
+    amount: number,
+    paymentId: number,
+    paymentReference: string,
+  ): Promise<{ transactionId: number }> {
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
+    try {
+      this.logger.log(
+        `Iniciando descuento de puntos para pago - Usuario: ${userId}, Monto: ${amount}`,
+      );
+
+      // 1. Obtener puntos del usuario
+      const userPoints = await this.userPointsRepository.findOne({
+        where: { userId },
+      });
+
+      if (!userPoints) {
+        throw new RpcException({
+          status: HttpStatus.NOT_FOUND,
+          message: `Usuario con ID ${userId} no tiene puntos`,
+        });
+      }
+
+      // 2. Validar puntos suficientes
+      if (userPoints.availablePoints < amount) {
+        throw new RpcException({
+          status: HttpStatus.BAD_REQUEST,
+          message: `Puntos insuficientes. Disponibles: ${userPoints.availablePoints}, Requeridos: ${amount}`,
+        });
+      }
+
+      // 3. Descontar puntos
+      const previousPoints = Number(userPoints.availablePoints);
+      userPoints.availablePoints = Number(userPoints.availablePoints) - amount;
+      userPoints.totalWithdrawnPoints =
+        Number(userPoints.totalWithdrawnPoints) + amount;
+
+      const savedUserPoints = await queryRunner.manager.save(userPoints);
+
+      // 4. Crear transacción para historial
+      const pointsTransaction = this.pointsTransactionRepository.create({
+        userId: userId,
+        userEmail: userEmail,
+        userName: userName,
+        type: PointTransactionType.PAYMENT_DEDUCTION,
+        amount: amount,
+        pendingAmount: 0,
+        withdrawnAmount: amount,
+        status: PointTransactionStatus.COMPLETED,
+        isArchived: false,
+        metadata: {
+          paymentId: paymentId,
+          paymentReference: paymentReference,
+          previousPoints: previousPoints,
+          pointsAfterDeduction: savedUserPoints.availablePoints,
+          transactionType: 'PAYMENT',
+        },
+      });
+
+      const savedTransaction =
+        await queryRunner.manager.save(pointsTransaction);
+
+      // 5. Crear relación con el pago
+      const pointsTransactionPayment =
+        this.pointsTransactionPaymentRepository.create({
+          pointsTransaction: savedTransaction,
+          paymentId: paymentId,
+          amount: amount,
+          paymentReference: paymentReference,
+          paymentMethod: 'POINTS',
+          notes: `Descuento de puntos por pago ${paymentReference}`,
+          metadata: {
+            userId: userId,
+            paymentId: paymentId,
+            pointsDeducted: amount,
+            transactionType: 'PAYMENT_DEDUCTION',
+            processedAt: new Date().toISOString(),
+          },
+        });
+
+      await queryRunner.manager.save(pointsTransactionPayment);
+
+      await queryRunner.commitTransaction();
+
+      this.logger.log(
+        `Puntos descontados exitosamente - Usuario: ${userId}, Monto: ${amount}, Transacción: ${savedTransaction.id}`,
+      );
+
+      return { transactionId: savedTransaction.id };
+    } catch (error) {
+      await queryRunner.rollbackTransaction();
+      const errorMessage = this.getErrorMessage(error);
+      this.logger.error(
+        `Error al descontar puntos para pago - Usuario: ${userId}: ${errorMessage}`,
+      );
+      throw error;
+    } finally {
+      await queryRunner.release();
+    }
   }
 
   async checkWithdrawalEligibility(userId: string): Promise<{

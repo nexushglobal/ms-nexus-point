@@ -31,4 +31,26 @@ export class UserPointsController {
   async getUserDashboard(@Payload() data: { userId: string }) {
     return this.userPointsService.getUserDashboard(data.userId);
   }
+
+  @MessagePattern({ cmd: 'pointsTransaction.deductForPayment' })
+  async deductPointsForPayment(
+    @Payload()
+    data: {
+      userId: string;
+      userName: string;
+      userEmail: string;
+      amount: number;
+      paymentId: number;
+      paymentReference: string;
+    },
+  ) {
+    return this.userPointsService.deductPointsForPayment(
+      data.userId,
+      data.userName,
+      data.userEmail,
+      data.amount,
+      data.paymentId,
+      data.paymentReference,
+    );
+  }
 }
