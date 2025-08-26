@@ -10,4 +10,9 @@ export class RankController {
   async getCurrentRank(@Payload() { userId }: { userId: string }) {
     return this.rankService.getCurrentRank(userId);
   }
+
+  @MessagePattern({ cmd: 'rank.getUsersCurrentRankBatch' })
+  async getUsersCurrentRankBatch(@Payload() { userIds }: { userIds: string[] }) {
+    return this.rankService.getUsersCurrentRankBatch(userIds);
+  }
 }

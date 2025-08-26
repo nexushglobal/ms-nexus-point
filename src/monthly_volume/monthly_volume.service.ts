@@ -1,6 +1,6 @@
 import { HttpStatus, Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, DataSource, QueryRunner } from 'typeorm';
+import { Repository, DataSource, QueryRunner, In } from 'typeorm';
 import { RpcException } from '@nestjs/microservices';
 import {
   MonthlyVolumeRank,
@@ -258,6 +258,129 @@ export class MonthlyVolumeService {
     monthEndDate.setHours(23, 59, 59, 999);
 
     return { monthStartDate, monthEndDate };
+  }
+
+  async getCurrentMonthlyVolume(
+    userId: string,
+  ): Promise<MonthlyVolumeRankDto | null> {
+    try {
+      this.logger.log(
+        `Obteniendo volumen mensual actual para usuario: ${userId}`,
+      );
+
+      const { monthStartDate, monthEndDate } = this.getCurrentMonthDates();
+
+      const monthlyVolume = await this.monthlyVolumeRankRepository.findOne({
+        where: {
+          userId,
+          monthStartDate,
+          monthEndDate,
+          status: MonthlyVolumeStatus.PENDING,
+        },
+        relations: ['assignedRank'],
+      });
+
+      if (!monthlyVolume) {
+        return null;
+      }
+
+      return {
+        id: monthlyVolume.id,
+        assignedRank: monthlyVolume.assignedRank
+          ? {
+              id: monthlyVolume.assignedRank.id,
+              name: monthlyVolume.assignedRank.name,
+              code: monthlyVolume.assignedRank.code,
+            }
+          : undefined,
+        totalVolume: monthlyVolume.totalVolume,
+        leftVolume: monthlyVolume.leftVolume,
+        rightVolume: monthlyVolume.rightVolume,
+        leftDirects: monthlyVolume.leftDirects,
+        rightDirects: monthlyVolume.rightDirects,
+        monthStartDate: monthlyVolume.monthStartDate,
+        monthEndDate: monthlyVolume.monthEndDate,
+        status: monthlyVolume.status,
+        metadata: monthlyVolume.metadata,
+        createdAt: monthlyVolume.createdAt,
+      };
+    } catch (error) {
+      const errorMessage = this.getErrorMessage(error);
+      this.logger.error(
+        `Error al obtener volumen mensual actual para usuario ${userId}: ${errorMessage}`,
+      );
+      return null;
+    }
+  }
+
+  async getUsersCurrentMonthlyVolumeBatch(
+    userIds: string[],
+  ): Promise<{ [userId: string]: MonthlyVolumeRankDto | null }> {
+    try {
+      this.logger.log(
+        `Obteniendo volúmenes mensuales actuales en lote para ${userIds.length} usuarios`,
+      );
+
+      if (userIds.length === 0) {
+        return {};
+      }
+
+      const { monthStartDate, monthEndDate } = this.getCurrentMonthDates();
+
+      const monthlyVolumes = await this.monthlyVolumeRankRepository.find({
+        where: {
+          userId: In(userIds),
+          monthStartDate,
+          monthEndDate,
+          status: MonthlyVolumeStatus.PENDING,
+        },
+        relations: ['assignedRank'],
+      });
+
+      // Crear un mapa de resultados
+      const result: { [userId: string]: MonthlyVolumeRankDto | null } = {};
+
+      // Inicializar todos los usuarios como null
+      userIds.forEach((userId) => {
+        result[userId] = null;
+      });
+
+      // Llenar los datos encontrados
+      monthlyVolumes.forEach((monthlyVolume) => {
+        result[monthlyVolume.userId] = {
+          id: monthlyVolume.id,
+          assignedRank: monthlyVolume.assignedRank
+            ? {
+                id: monthlyVolume.assignedRank.id,
+                name: monthlyVolume.assignedRank.name,
+                code: monthlyVolume.assignedRank.code,
+              }
+            : undefined,
+          totalVolume: monthlyVolume.totalVolume,
+          leftVolume: monthlyVolume.leftVolume,
+          rightVolume: monthlyVolume.rightVolume,
+          leftDirects: monthlyVolume.leftDirects,
+          rightDirects: monthlyVolume.rightDirects,
+          monthStartDate: monthlyVolume.monthStartDate,
+          monthEndDate: monthlyVolume.monthEndDate,
+          status: monthlyVolume.status,
+          metadata: monthlyVolume.metadata,
+          createdAt: monthlyVolume.createdAt,
+        };
+      });
+
+      this.logger.log(
+        `Procesados ${monthlyVolumes.length} volúmenes mensuales de ${userIds.length} usuarios solicitados`,
+      );
+
+      return result;
+    } catch (error) {
+      const errorMessage = this.getErrorMessage(error);
+      this.logger.error(
+        `Error al obtener volúmenes mensuales en lote: ${errorMessage}`,
+      );
+      return {};
+    }
   }
 
   private getErrorMessage(error: unknown): string {

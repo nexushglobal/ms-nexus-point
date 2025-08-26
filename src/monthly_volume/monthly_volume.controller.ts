@@ -25,4 +25,14 @@ export class MonthlyVolumeController {
       createMonthlyVolumeDto,
     );
   }
+
+  @MessagePattern({ cmd: 'monthlyVolume.getCurrentMonthlyVolume' })
+  async getCurrentMonthlyVolume(@Payload() data: { userId: string }) {
+    return this.monthlyVolumeService.getCurrentMonthlyVolume(data.userId);
+  }
+
+  @MessagePattern({ cmd: 'monthlyVolume.getUsersCurrentMonthlyVolumeBatch' })
+  async getUsersCurrentMonthlyVolumeBatch(@Payload() data: { userIds: string[] }) {
+    return this.monthlyVolumeService.getUsersCurrentMonthlyVolumeBatch(data.userIds);
+  }
 }

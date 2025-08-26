@@ -15,5 +15,4 @@ export class MonthlyVolumeRankDto {
   status: string;
   metadata?: Record<string, any>;
   createdAt: Date;
-  updatedAt: Date;
 }

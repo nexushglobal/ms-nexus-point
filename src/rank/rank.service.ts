@@ -643,6 +643,115 @@ export class RankService {
     }
   }
 
+  async getUsersCurrentRankBatch(userIds: string[]): Promise<{ [userId: string]: GetCurrentRankResponse | null }> {
+    try {
+      this.logger.log(`Getting current ranks for ${userIds.length} users in batch`);
+
+      if (userIds.length === 0) {
+        return {};
+      }
+
+      // Get user ranks info for all users
+      const userRanks = await this.userRankRepository.find({
+        where: { userId: In(userIds) },
+        relations: ['currentRank', 'highestRank'],
+      });
+
+      // Get all current month volumes for all users
+      const currentMonthVolumes = await this.monthlyVolumeRankRepository.find({
+        where: {
+          userId: In(userIds),
+          status: MonthlyVolumeStatus.PENDING,
+        },
+      });
+
+      // Get all ranks ordered by rankOrder
+      const allRanks = await this.rankRepository.find({
+        where: { isActive: true },
+        order: { rankOrder: 'ASC' },
+      });
+
+      // Create result map
+      const result: { [userId: string]: GetCurrentRankResponse | null } = {};
+
+      // Initialize all users as null
+      userIds.forEach(userId => {
+        result[userId] = null;
+      });
+
+      // Process each user that has rank info
+      for (const userRank of userRanks) {
+        const currentMonthVolume = currentMonthVolumes.find(
+          volume => volume.userId === userRank.userId
+        );
+
+        if (!currentMonthVolume) {
+          this.logger.warn(`No current month volume found for user: ${userRank.userId}`);
+          continue;
+        }
+
+        try {
+          // Calculate next rank now (what rank user would get today if processed)
+          const nextRankNow = await this.calculateRankBasedOnCurrentData(
+            userRank.userId,
+            currentMonthVolume,
+            allRanks,
+          );
+
+          // Calculate next rank requirements
+          const nextRankReq = await this.calculateNextRankRequirements(
+            userRank.currentRank,
+            currentMonthVolume,
+            allRanks,
+            userRank.userId,
+          );
+
+          // Get current user data for requirements
+          const currentData = await this.buildUserVolumeData(
+            userRank.userId,
+            currentMonthVolume,
+          );
+
+          result[userRank.userId] = {
+            currentRank: {
+              id: userRank.currentRank.id,
+              name: userRank.currentRank.name,
+              code: userRank.currentRank.code,
+            },
+            highestRank: userRank.highestRank
+              ? {
+                  id: userRank.highestRank.id,
+                  name: userRank.highestRank.name,
+                  code: userRank.highestRank.code,
+                }
+              : undefined,
+            nextRankNow,
+            nextRankReq,
+            currentData,
+          };
+        } catch (error) {
+          const errorMessage = this.getErrorMessage(error);
+          this.logger.warn(
+            `Error processing rank for user ${userRank.userId}: ${errorMessage}`,
+          );
+          // Continue processing other users, this one will remain null
+        }
+      }
+
+      this.logger.log(
+        `Processed ${userRanks.length} user ranks out of ${userIds.length} requested users`
+      );
+
+      return result;
+    } catch (error) {
+      const errorMessage = this.getErrorMessage(error);
+      this.logger.error(
+        `Error getting current ranks in batch: ${errorMessage}`,
+      );
+      return {};
+    }
+  }
+
   private getErrorMessage(error: unknown): string {
     if (error instanceof Error) return error.message;
     if (typeof error === 'string') return error;
