@@ -264,9 +264,9 @@ export class UserPointsService {
         const pointsTransactionPayment =
           this.pointsTransactionPaymentRepository.create({
             pointsTransaction: savedTransaction,
-            paymentId: paymentId,
+            paymentId: paymentId || 0,
             amount: directBonus,
-            paymentReference: paymentReference,
+            paymentReference: paymentReference || 'Puntos por Unilevel',
             // paymentMethod: 'DIRECT_BONUS',
             notes: `Suma de puntos a ${referrerPoints.userName}`,
             metadata: {
