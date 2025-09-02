@@ -5,6 +5,7 @@ import {
   IsString,
   IsEnum,
   ValidateNested,
+  IsOptional,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { VolumeSide } from '../entities/weekly-volume.entity';
@@ -29,8 +30,8 @@ export class VolumeUserAssignmentDto {
   site: VolumeSide;
 
   @IsString({ message: 'El campo de pago es una cadena de texto' })
-  @IsNotEmpty({ message: 'El campo de pago es obligatorio' })
-  paymentId: string;
+  @IsOptional()
+  paymentId?: string;
 }
 
 export class CreateVolumeDto {

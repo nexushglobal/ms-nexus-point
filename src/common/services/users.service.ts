@@ -40,4 +40,20 @@ export class UsersService {
       { userId },
     );
   }
+
+  async getParentChain(userId: string) {
+    return await this.client.send(
+      { cmd: 'user.tree.getParentChain' },
+      { userId },
+    );
+  }
+
+  // async getActiveAncestorsWithMembership(
+  //   userId: string,
+  // ): Promise<ActiveAncestorDto[]> {
+  //   return await this.client.send(
+  //     { cmd: 'users.getActiveAncestorsWithMembership' },
+  //     { userId },
+  //   );
+  // }
 }
