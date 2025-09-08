@@ -16,6 +16,7 @@ import { LotPointsTransactionController } from './controllers/points-lots-transa
 import { LotPointsTransactionService } from './services/points-lots-transaction.service';
 import { LotPointsTransaction } from './entities/points-lots-transaction.entity';
 import { WeeklyVolume } from '../weekly-volume/entities/weekly-volume.entity';
+import { WeeklyVolumeHistory } from '../weekly-volume/entities/weekly-volume-history.entity';
 import { MonthlyVolumeRank } from '../monthly_volume/entities/monthly_volume_ranks.entity';
 import { UserRank } from '../rank/entities/user_ranks.entity';
 
@@ -27,6 +28,7 @@ import { UserRank } from '../rank/entities/user_ranks.entity';
       LotPointsTransaction,
       PointsTransactionPayment,
       WeeklyVolume,
+      WeeklyVolumeHistory,
       MonthlyVolumeRank,
       UserRank,
     ]),
