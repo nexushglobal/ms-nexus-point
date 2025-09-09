@@ -59,4 +59,21 @@ export class PointsTransactionController {
   async rejectWithdrawal(@Payload() rejectWithdrawalDto: RejectWithdrawalDto) {
     return this.pointsTransactionService.rejectWithdrawal(rejectWithdrawalDto);
   }
+
+  @MessagePattern({ cmd: 'pointsTransaction.rollbackReservedPoints' })
+  async rollbackReservedPoints(
+    @Payload()
+    data: {
+      userId: string;
+      withdrawalPoints: Array<{
+        pointsTransactionId: string;
+        amountUsed: number;
+      }>;
+    },
+  ) {
+    return this.pointsTransactionService.rollbackReservedPoints(
+      data.userId,
+      data.withdrawalPoints,
+    );
+  }
 }

@@ -433,6 +433,91 @@ export class PointsTransactionService extends BaseService<PointsTransaction> {
     }
   }
 
+  async rollbackReservedPoints(
+    userId: string,
+    withdrawalPoints: Array<{
+      pointsTransactionId: string;
+      amountUsed: number;
+    }>,
+  ): Promise<{ success: boolean; message: string }> {
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
+    try {
+      this.logger.log(
+        `Iniciando rollback de reserva de puntos para usuario ${userId}`,
+      );
+
+      let totalAmountToRestore = 0;
+
+      // 1. Revertir pendingAmount en transacciones que fueron modificadas
+      for (const withdrawalPoint of withdrawalPoints) {
+        const transaction = await queryRunner.manager.findOne(
+          PointsTransaction,
+          {
+            where: { id: parseInt(withdrawalPoint.pointsTransactionId) },
+          },
+        );
+
+        if (transaction) {
+          // Restar el pendingAmount que se había sumado
+          transaction.pendingAmount = Math.max(
+            0,
+            (transaction.pendingAmount || 0) - withdrawalPoint.amountUsed,
+          );
+          await queryRunner.manager.save(transaction);
+          totalAmountToRestore += withdrawalPoint.amountUsed;
+        }
+      }
+
+      // 2. Revertir los cambios en UserPoints
+      const userPoints = await this.userPointsService.findOne(userId);
+      if (userPoints) {
+        // Devolver availablePoints y restar totalWithdrawnPoints
+        userPoints.availablePoints =
+          Number(userPoints.availablePoints) + totalAmountToRestore;
+        userPoints.totalWithdrawnPoints = Math.max(
+          0,
+          Number(userPoints.totalWithdrawnPoints) - totalAmountToRestore,
+        );
+        await queryRunner.manager.save(userPoints);
+      }
+
+      // 3. Eliminar la transacción WITHDRAWAL PENDING que se había creado
+      await queryRunner.manager.delete(PointsTransaction, {
+        userId,
+        type: PointTransactionType.WITHDRAWAL,
+        status: PointTransactionStatus.PENDING,
+        amount: totalAmountToRestore,
+      });
+
+      await queryRunner.commitTransaction();
+
+      this.logger.log(
+        `Rollback completado exitosamente. ${totalAmountToRestore} puntos restaurados para usuario ${userId}`,
+      );
+
+      return {
+        success: true,
+        message: `Rollback exitoso: ${totalAmountToRestore} puntos restaurados`,
+      };
+    } catch (error) {
+      await queryRunner.rollbackTransaction();
+      this.logger.error(
+        `Error en rollback de reserva para usuario ${userId}: ${this.getErrorMessage(error)}`,
+      );
+
+      if (error instanceof RpcException) throw error;
+      throw new RpcException({
+        status: HttpStatus.INTERNAL_SERVER_ERROR,
+        message: 'Error interno en rollback de reserva de puntos',
+      });
+    } finally {
+      await queryRunner.release();
+    }
+  }
+
   private getErrorMessage(error: unknown): string {
     if (error instanceof Error) return error.message;
     if (typeof error === 'string') return error;
