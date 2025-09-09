@@ -167,8 +167,7 @@ export class WeeklyVolumeService {
           weekEndDate: weekEndDate,
           status: VolumeProcessingStatus.PENDING,
           metadata: {
-            createdBy: 'bulk_volume_assignment',
-            createdAt: new Date().toISOString(),
+            'Fecha de registro': new Date().toISOString(),
           },
         });
 
@@ -190,8 +189,7 @@ export class WeeklyVolumeService {
         volumeSide: site,
         volume: binaryPoints,
         metadata: {
-          bulkAssignment: true,
-          processedAt: new Date().toISOString(),
+          'Fecha de registro': new Date().toISOString(),
         },
       });
 
@@ -460,10 +458,10 @@ export class WeeklyVolumeService {
             volume.status = VolumeProcessingStatus.CANCELLED;
             volume.processedAt = new Date();
             volume.metadata = {
-              reason: 'Membresía inactiva',
-              processedAt: new Date().toISOString().split('T')[0],
-              leftVolume: volume.leftVolume,
-              rightVolume: volume.rightVolume,
+              Motivo: 'Membresía inactiva',
+              'Fecha de registro': new Date().toISOString().split('T')[0],
+              'Volumen izquierdo': volume.leftVolume,
+              'Volumen derecho': volume.rightVolume,
             };
             await queryRunner.manager.save(volume);
 
@@ -644,16 +642,16 @@ export class WeeklyVolumeService {
       volume.processedAt = new Date();
       volume.commissionEarned = pointsToAdd;
       volume.metadata = {
-        reason: 'Comisión binaria procesada',
-        processedAt: new Date().toISOString().split('T')[0],
-        leftVolume: volume.leftVolume,
-        rightVolume: volume.rightVolume,
-        commissionProcessed: pointsToAdd,
-        directsCount: directCount,
-        effectiveVolume: effectiveLowerVolume,
-        originalVolume: lowerVolume,
-        limitApplied: volumeLimitResult.limitApplied,
-        limitDescription: volumeLimitResult.limitDescription,
+        Motivo: 'Comisión binaria procesada',
+        'Fecha de registro': new Date().toISOString().split('T')[0],
+        'Volumen izquierdo': volume.leftVolume,
+        'Volumen derecho': volume.rightVolume,
+        'Puntos procesados': pointsToAdd,
+        'Cantidad directos activos': directCount,
+        'Volumen efectivo': effectiveLowerVolume,
+        'Volumen original': lowerVolume,
+        'Límite aplicado': volumeLimitResult.limitApplied,
+        'Descripción del límite': volumeLimitResult.limitDescription,
       };
 
       await queryRunner.manager.save(volume);
@@ -833,18 +831,18 @@ export class WeeklyVolumeService {
       type: PointTransactionType.BINARY_COMMISSION,
       status: PointTransactionStatus.COMPLETED,
       metadata: {
-        weekStartDate: volume.weekStartDate,
-        weekEndDate: volume.weekEndDate,
-        leftVolume: volume.leftVolume,
-        rightVolume: volume.rightVolume,
-        selectedSide:
+        'Fecha de inicio de la semana': volume.weekStartDate,
+        'Fecha de fin de la semana': volume.weekEndDate,
+        'Volumen izquierdo': volume.leftVolume,
+        'Volumen derecho': volume.rightVolume,
+        'Lado seleccionado':
           volume.selectedSide === VolumeSide.LEFT ? 'Izquierdo' : 'Derecho',
-        commissionPercentage,
-        directsActive: directCount,
-        effectiveVolume,
-        originalLowerVolume: Math.min(volume.leftVolume, volume.rightVolume),
-        volumeLimitApplied: volumeLimitResult.limitApplied,
-        volumeLimitDescription: volumeLimitResult.limitDescription,
+        'Porcentaje de comisión': commissionPercentage,
+        'Cantidad directos activos': directCount,
+        'Volumen efectivo': effectiveVolume,
+        'Volumen original': Math.min(volume.leftVolume, volume.rightVolume),
+        'Límite aplicado': volumeLimitResult.limitApplied,
+        'Descripción del límite': volumeLimitResult.limitDescription,
       },
     });
 
@@ -918,8 +916,8 @@ export class WeeklyVolumeService {
         weekEndDate: weekDates.weekEnd,
         status: VolumeProcessingStatus.PENDING,
         metadata: {
-          carryOver: carryOverVolume,
-          reason: carryOverVolume > 0 ? 'Volumen transferido' : 'Nuevo período',
+          'Volumen transferido': carryOverVolume,
+          Motivo: carryOverVolume > 0 ? 'Volumen transferido' : 'Nuevo período',
         },
       });
 
@@ -971,9 +969,9 @@ export class WeeklyVolumeService {
         weekEndDate: weekDates.weekEnd,
         status: VolumeProcessingStatus.PENDING,
         metadata: {
-          carryOverSide: strongerSide,
-          carryOverAmount: carryOverVolume,
-          reason: 'Carry-over de volumen procesado',
+          'Lado de retorno': strongerSide,
+          'Volumen de retorno': carryOverVolume,
+          Motivo: 'Carry-over de volumen procesado',
         },
       });
 

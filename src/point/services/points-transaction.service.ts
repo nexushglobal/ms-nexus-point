@@ -302,11 +302,11 @@ export class PointsTransactionService extends BaseService<PointsTransaction> {
         pointsTransaction.status = PointTransactionStatus.COMPLETED;
         pointsTransaction.metadata = {
           ...pointsTransaction.metadata,
-          withdrawalId: withdrawalId.toString(),
-          withdrawalStatus: 'APPROVED',
-          approvedAt: new Date(),
-          approvedBy: reviewerId,
-          approvedByEmail: reviewerEmail,
+          'Fecha de aprobación': new Date().toISOString(),
+          'ID de retiro': withdrawalId.toString(),
+          'Estado de retiro': 'Aprobado',
+          'Aprobado por': reviewerId,
+          Email: reviewerEmail,
         };
 
         await queryRunner.manager.save(pointsTransaction);
@@ -388,12 +388,12 @@ export class PointsTransactionService extends BaseService<PointsTransaction> {
         pointsTransaction.status = PointTransactionStatus.CANCELLED;
         pointsTransaction.metadata = {
           ...pointsTransaction.metadata,
-          withdrawalId: withdrawalId.toString(),
-          'Estado de Retiro': 'Cancelado',
-          'Motivo de Rechazo': rejectionReason,
-          rejectedAt: new Date(),
-          rejectedBy: reviewerId,
-          rejectedByEmail: reviewerEmail,
+          'ID de retiro': withdrawalId.toString(),
+          'Estado de retiro': 'Cancelado',
+          'Motivo de rechazo': rejectionReason,
+          'Fecha de rechazo': new Date().toISOString(),
+          'Rechazado por': reviewerId,
+          Email: reviewerEmail,
         };
 
         await queryRunner.manager.save(pointsTransaction);

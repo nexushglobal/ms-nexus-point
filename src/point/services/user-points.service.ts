@@ -272,8 +272,8 @@ export class UserPointsService {
             metadata: {
               Usuario: referrerPoints.userId,
               'Puntos Sumados': directBonus,
-              bulkAssignment: true,
-              processedAt: new Date().toISOString(),
+              // bulkAssignment: true,
+              'Fecha de registro': new Date().toISOString(),
             },
           });
         await queryRunner.manager.save(pointsTransactionPayment);
@@ -385,8 +385,8 @@ export class UserPointsService {
           paymentMethod: 'POINTS',
           notes: `Descuento de puntos por pago ${paymentReference}`,
           metadata: {
-            userId: userId,
-            paymentId: paymentId,
+            'ID de usuario': userId,
+            // paymentId: paymentId,
             pointsDeducted: amount,
             transactionType: 'PAYMENT_DEDUCTION',
             processedAt: new Date().toISOString(),
