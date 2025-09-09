@@ -29,4 +29,9 @@ export class WeeklyVolumeController {
   async getWeeklyVolumeHistory(dto: GetWeeklyVolumeHistoryDto) {
     return this.weeklyVolumeService.getWeeklyVolumeHistory(dto);
   }
+
+  @MessagePattern({ cmd: 'weeklyVolume.processWeeklyVolumes' })
+  async processWeeklyVolumes() {
+    return this.weeklyVolumeService.processWeeklyVolumes();
+  }
 }

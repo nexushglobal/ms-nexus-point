@@ -48,6 +48,38 @@ export class UsersService {
     );
   }
 
+  async getUserWithChildren(userId: string): Promise<{
+    id: string;
+    referralCode: string;
+    leftChildId?: string;
+    rightChildId?: string;
+  }> {
+    return await this.client.send(
+      { cmd: 'user.getUserWithChildren' },
+      { userId },
+    );
+  }
+
+  async getDescendantsInLeg(
+    userId: string,
+    side: 'LEFT' | 'RIGHT',
+  ): Promise<string[]> {
+    return await this.client.send(
+      { cmd: 'user.tree.getDescendantsInLeg' },
+      { userId, side },
+    );
+  }
+
+  async checkActiveMembershipsInLeg(
+    descendantIds: string[],
+    referralCode: string,
+  ): Promise<boolean> {
+    return await this.client.send(
+      { cmd: 'user.tree.checkActiveMembershipsInLeg' },
+      { descendantIds, referralCode },
+    );
+  }
+
   // async getActiveAncestorsWithMembership(
   //   userId: string,
   // ): Promise<ActiveAncestorDto[]> {
