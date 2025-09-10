@@ -15,9 +15,6 @@ export interface PaymentResponse {
 export class PaymentsService {
   constructor(private readonly client: MessagingService) {}
   async findOneById(id: number): Promise<PaymentResponse | null> {
-    return await this.client.send(
-      { cmd: 'orders.findUserOrdersByPeriod' },
-      { id },
-    );
+    return await this.client.send({ cmd: 'payment.findById' }, { id });
   }
 }
