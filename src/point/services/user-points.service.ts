@@ -30,6 +30,10 @@ import {
 } from '../../monthly_volume/entities/monthly_volume_ranks.entity';
 import { UserRank } from '../../rank/entities/user_ranks.entity';
 import { getWeekDates, getMonthDates } from '../../common/helpers/dates';
+import {
+  PaymentResponse,
+  PaymentsService,
+} from 'src/common/services/payments.service';
 
 @Injectable()
 export class UserPointsService {
@@ -51,6 +55,7 @@ export class UserPointsService {
     private readonly membershipService: MembershipService,
     private readonly pointsEventsService: PointsEventsService,
     private readonly dataSource: DataSource,
+    private readonly paymentsService: PaymentsService,
   ) {}
 
   async getUserPoints(userId: string) {
@@ -261,11 +266,14 @@ export class UserPointsService {
 
       // Crear relación con el pago usando TUS ENTIDADES
       if (directBonus > 0) {
+        let payment: PaymentResponse | null = null;
+        if (paymentId)
+          payment = await this.paymentsService.findOneById(paymentId);
         const pointsTransactionPayment =
           this.pointsTransactionPaymentRepository.create({
             pointsTransaction: savedTransaction,
             paymentId: paymentId || 0,
-            amount: directBonus,
+            amount: payment ? payment.amount : directBonus,
             paymentReference: paymentReference || 'Puntos por Unilevel',
             // paymentMethod: 'DIRECT_BONUS',
             notes: `Suma de puntos a ${referrerPoints.userName}`,
