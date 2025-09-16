@@ -643,9 +643,13 @@ export class RankService {
     }
   }
 
-  async getUsersCurrentRankBatch(userIds: string[]): Promise<{ [userId: string]: GetCurrentRankResponse | null }> {
+  async getUsersCurrentRankBatch(
+    userIds: string[],
+  ): Promise<{ [userId: string]: GetCurrentRankResponse | null }> {
     try {
-      this.logger.log(`Getting current ranks for ${userIds.length} users in batch`);
+      this.logger.log(
+        `Getting current ranks for ${userIds.length} users in batch`,
+      );
 
       if (userIds.length === 0) {
         return {};
@@ -675,18 +679,20 @@ export class RankService {
       const result: { [userId: string]: GetCurrentRankResponse | null } = {};
 
       // Initialize all users as null
-      userIds.forEach(userId => {
+      userIds.forEach((userId) => {
         result[userId] = null;
       });
 
       // Process each user that has rank info
       for (const userRank of userRanks) {
         const currentMonthVolume = currentMonthVolumes.find(
-          volume => volume.userId === userRank.userId
+          (volume) => volume.userId === userRank.userId,
         );
 
         if (!currentMonthVolume) {
-          this.logger.warn(`No current month volume found for user: ${userRank.userId}`);
+          this.logger.warn(
+            `No current month volume found for user: ${userRank.userId}`,
+          );
           continue;
         }
 
@@ -739,7 +745,7 @@ export class RankService {
       }
 
       this.logger.log(
-        `Processed ${userRanks.length} user ranks out of ${userIds.length} requested users`
+        `Processed ${userRanks.length} user ranks out of ${userIds.length} requested users`,
       );
 
       return result;

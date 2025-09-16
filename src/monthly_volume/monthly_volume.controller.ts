@@ -32,7 +32,11 @@ export class MonthlyVolumeController {
   }
 
   @MessagePattern({ cmd: 'monthlyVolume.getUsersCurrentMonthlyVolumeBatch' })
-  async getUsersCurrentMonthlyVolumeBatch(@Payload() data: { userIds: string[] }) {
-    return this.monthlyVolumeService.getUsersCurrentMonthlyVolumeBatch(data.userIds);
+  async getUsersCurrentMonthlyVolumeBatch(
+    @Payload() data: { userIds: string[] },
+  ) {
+    return this.monthlyVolumeService.getUsersCurrentMonthlyVolumeBatch(
+      data.userIds,
+    );
   }
 }

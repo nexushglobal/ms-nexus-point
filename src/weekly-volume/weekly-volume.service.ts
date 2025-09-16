@@ -412,167 +412,158 @@ export class WeeklyVolumeService {
     failed: number;
     totalPoints: number;
   }> {
-    const queryRunner = this.dataSource.createQueryRunner();
-    await queryRunner.connect();
-    await queryRunner.startTransaction();
+    this.logger.log('Iniciando procesamiento de volúmenes semanales');
 
-    try {
-      this.logger.log('Iniciando procesamiento de volúmenes semanales');
+    const lastWeekDates = getPreviousWeekDates();
 
-      const lastWeekDates = getPreviousWeekDates();
+    const pendingVolumes = await this.weeklyVolumeRepository.find({
+      where: {
+        status: VolumeProcessingStatus.PENDING,
+        weekStartDate: lastWeekDates.weekStart,
+        weekEndDate: lastWeekDates.weekEnd,
+      },
+      relations: ['history'],
+    });
 
-      const pendingVolumes = await this.weeklyVolumeRepository.find({
-        where: {
-          status: VolumeProcessingStatus.PENDING,
-          weekStartDate: lastWeekDates.weekStart,
-          weekEndDate: lastWeekDates.weekEnd,
-        },
-        relations: ['history'],
-      });
+    this.logger.log(
+      `Encontrados ${pendingVolumes.length} volúmenes pendientes para procesar`,
+    );
 
-      this.logger.log(
-        `Encontrados ${pendingVolumes.length} volúmenes pendientes para procesar`,
-      );
+    let processed = 0;
+    let successful = 0;
+    let failed = 0;
+    let totalPoints = 0;
 
-      let processed = 0;
-      let successful = 0;
-      let failed = 0;
-      let totalPoints = 0;
+    const currentWeekDates = getWeekDates();
 
-      const currentWeekDates = getWeekDates();
+    // Procesar cada volumen en su propia transacción
+    for (const volume of pendingVolumes) {
+      const queryRunner = this.dataSource.createQueryRunner();
+      await queryRunner.connect();
+      await queryRunner.startTransaction();
 
-      for (const volume of pendingVolumes) {
-        try {
-          // Verificar membresía activa
-          const membershipInfo =
-            await this.membershipService.getUserMembershipInfo(volume.userId);
+      try {
+        // Verificar membresía activa
+        const membershipInfo =
+          await this.membershipService.getUserMembershipInfo(volume.userId);
 
-          if (
-            !membershipInfo ||
-            membershipInfo.status !== MembershipStatus.ACTIVE
-          ) {
-            this.logger.warn(
-              `Usuario ${volume.userId} no tiene una membresía activa`,
-            );
-
-            volume.status = VolumeProcessingStatus.CANCELLED;
-            volume.processedAt = new Date();
-            volume.metadata = {
-              Motivo: 'Membresía inactiva',
-              'Fecha de registro': new Date().toISOString().split('T')[0],
-              'Volumen izquierdo': volume.leftVolume,
-              'Volumen derecho': volume.rightVolume,
-            };
-            await queryRunner.manager.save(volume);
-
-            // Crear volumen para la siguiente semana sin carry over
-            await this.createNextWeekVolume(
-              volume.userId,
-              currentWeekDates,
-              0,
-              queryRunner,
-            );
-
-            processed++;
-            failed++;
-            continue;
-          }
-
-          // Verificar piernas activas del árbol MLM
-          const hasLeftLeg = await this.checkLeg(
-            volume.userId,
-            VolumeSide.LEFT,
-          );
-          const hasRightLeg = await this.checkLeg(
-            volume.userId,
-            VolumeSide.RIGHT,
+        if (
+          !membershipInfo ||
+          membershipInfo.status !== MembershipStatus.ACTIVE
+        ) {
+          this.logger.warn(
+            `Usuario ${volume.userId} no tiene una membresía activa`,
           );
 
-          if (!hasLeftLeg || !hasRightLeg) {
-            this.logger.warn(
-              `Usuario ${volume.userId} no tiene hijos en ambos lados`,
-            );
+          volume.status = VolumeProcessingStatus.CANCELLED;
+          volume.processedAt = new Date();
+          volume.metadata = {
+            Motivo: 'Membresía inactiva',
+            'Fecha de registro': new Date().toISOString().split('T')[0],
+            'Volumen izquierdo': volume.leftVolume,
+            'Volumen derecho': volume.rightVolume,
+          };
+          await queryRunner.manager.save(volume);
 
-            volume.status = VolumeProcessingStatus.CANCELLED;
-            volume.processedAt = new Date();
-            volume.metadata = {
-              reason:
-                !hasLeftLeg && !hasRightLeg
-                  ? 'No tiene directos activos en ninguna pierna'
-                  : !hasLeftLeg
-                    ? 'No tiene directo activo en la pierna izquierda'
-                    : 'No tiene directo activo en la pierna derecha',
-              processedAt: new Date().toISOString().split('T')[0],
-              leftVolume: volume.leftVolume,
-              rightVolume: volume.rightVolume,
-            };
-
-            await queryRunner.manager.save(volume);
-
-            // Transferir volumen completo a la siguiente semana
-            const carryOverVolume = volume.leftVolume + volume.rightVolume;
-            await this.createNextWeekVolume(
-              volume.userId,
-              currentWeekDates,
-              carryOverVolume,
-              queryRunner,
-            );
-
-            processed++;
-            failed++;
-            continue;
-          }
-
-          // Procesar comisión binaria
-          const result = await this.processBinaryCommission(
-            volume,
-            membershipInfo,
+          // Crear volumen para la siguiente semana sin carry over
+          await this.createNextWeekVolume(
+            volume.userId,
+            currentWeekDates,
+            0,
             queryRunner,
           );
 
-          if (result.success) {
-            totalPoints += result.pointsEarned;
-            successful++;
-          } else {
-            failed++;
-          }
-
+          await queryRunner.commitTransaction();
           processed++;
-        } catch (error) {
-          const errorMessage = this.getErrorMessage(error);
-          this.logger.error(
-            `Error procesando volumen ${volume.id}: ${errorMessage}`,
-          );
           failed++;
-          processed++;
+          continue;
         }
+
+        // Verificar piernas activas del árbol MLM
+        const hasLeftLeg = await this.checkLeg(volume.userId, VolumeSide.LEFT);
+        const hasRightLeg = await this.checkLeg(
+          volume.userId,
+          VolumeSide.RIGHT,
+        );
+
+        if (!hasLeftLeg || !hasRightLeg) {
+          this.logger.warn(
+            `Usuario ${volume.userId} no tiene hijos en ambos lados`,
+          );
+
+          volume.status = VolumeProcessingStatus.CANCELLED;
+          volume.processedAt = new Date();
+          volume.metadata = {
+            reason:
+              !hasLeftLeg && !hasRightLeg
+                ? 'No tiene directos activos en ninguna pierna'
+                : !hasLeftLeg
+                  ? 'No tiene directo activo en la pierna izquierda'
+                  : 'No tiene directo activo en la pierna derecha',
+            processedAt: new Date().toISOString().split('T')[0],
+            leftVolume: volume.leftVolume,
+            rightVolume: volume.rightVolume,
+          };
+
+          await queryRunner.manager.save(volume);
+
+          // Transferir volumen completo a la siguiente semana
+          const carryOverVolume = volume.leftVolume + volume.rightVolume;
+          await this.createNextWeekVolume(
+            volume.userId,
+            currentWeekDates,
+            carryOverVolume,
+            queryRunner,
+          );
+
+          await queryRunner.commitTransaction();
+          processed++;
+          failed++;
+          continue;
+        }
+
+        // Procesar comisión binaria
+        const result = await this.processBinaryCommission(
+          volume,
+          membershipInfo,
+          queryRunner,
+        );
+
+        if (result.success) {
+          totalPoints += result.pointsEarned;
+          successful++;
+        } else {
+          failed++;
+        }
+
+        await queryRunner.commitTransaction();
+        processed++;
+      } catch (error) {
+        await queryRunner.rollbackTransaction();
+        const errorMessage = this.getErrorMessage(error);
+        this.logger.error(
+          `Error procesando volumen ${volume.id}: ${errorMessage}`,
+        );
+        failed++;
+        processed++;
+      } finally {
+        await queryRunner.release();
       }
-
-      await queryRunner.commitTransaction();
-
-      this.logger.log(
-        `Procesamiento de volúmenes completado. Procesados: ${processed}, Exitosos: ${successful}, Fallidos: ${failed}, Puntos totales: ${totalPoints}`,
-      );
-
-      // TODO: Enviar reporte semanal
-      // await this.sendWeeklyVolumeReport({...});
-
-      return {
-        processed,
-        successful,
-        failed,
-        totalPoints,
-      };
-    } catch (error) {
-      const errorMessage = this.getErrorMessage(error);
-      this.logger.error(
-        `Error general en procesamiento de volúmenes: ${errorMessage}`,
-      );
-      await queryRunner.rollbackTransaction();
-      throw error;
-    } finally {
-      await queryRunner.release();
     }
+
+    this.logger.log(
+      `Procesamiento de volúmenes completado. Procesados: ${processed}, Exitosos: ${successful}, Fallidos: ${failed}, Puntos totales: ${totalPoints}`,
+    );
+
+    // TODO: Enviar reporte semanal
+    // await this.sendWeeklyVolumeReport({...});
+
+    return {
+      processed,
+      successful,
+      failed,
+      totalPoints,
+    };
   }
 
   /**
@@ -614,25 +605,8 @@ export class WeeklyVolumeService {
       );
       const effectiveLowerVolume = volumeLimitResult.effectiveVolume;
 
-      // Obtener información de membresía del usuario para obtener el porcentaje de comisión
-      const membershipInfo = await this.membershipService.getUserMembershipInfo(
-        volume.userId,
-      );
-      let commissionPercentage = 10; // Default 10%
-      if (membershipInfo.hasMembership && membershipInfo.plan?.id) {
-        try {
-          const planDetails = await this.membershipService.getMembershipPlan(
-            membershipInfo.plan.id,
-            volume.userId,
-          );
-          commissionPercentage = planDetails.plan.commissionPercentage;
-        } catch (error) {
-          const errorMessage = this.getErrorMessage(error);
-          this.logger.warn(
-            `Error obteniendo porcentaje de comisión para usuario ${volume.userId}, usando default 10%: ${errorMessage}`,
-          );
-        }
-      }
+      // Usar comisión fija del 10% para comisión binaria
+      const commissionPercentage = 10;
 
       // Calcular puntos a otorgar
       const pointsToAdd = effectiveLowerVolume * (commissionPercentage / 100);
@@ -867,16 +841,26 @@ export class WeeklyVolumeService {
         select: {
           id: true,
           paymentId: true,
+          volume: true,
         },
       });
 
     for (const history of volumeHistoryWithPayments) {
       if (history.paymentId) {
+        // Validar que el volumen sea un número válido y mayor que 0
+        const volumeAmount = Number(history.volume) || 0;
+        if (volumeAmount <= 0) {
+          this.logger.warn(
+            `Omitiendo historial ${history.id} con volumen inválido: ${history.volume}`,
+          );
+          continue;
+        }
+
         const transactionPayment =
           this.pointsTransactionPaymentRepository.create({
             pointsTransaction: transaction,
             paymentId: parseInt(history.paymentId), // Convertir string a number
-            amount: history.volume, // Usar el volumen como amount
+            amount: volumeAmount, // Usar el volumen validado como amount
             paymentMethod: 'MEMBERSHIP_PAYMENT', // Método de pago por defecto
             notes: `Vinculado desde volumen semanal - ${selectedSide === VolumeSide.LEFT ? 'Izquierdo' : 'Derecho'}`,
           });
