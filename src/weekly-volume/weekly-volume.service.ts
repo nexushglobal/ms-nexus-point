@@ -507,13 +507,14 @@ export class WeeklyVolumeService {
 
           await queryRunner.manager.save(volume);
 
-          // Transferir volumen completo a la siguiente semana
-          const carryOverVolume = volume.leftVolume + volume.rightVolume;
+          // Transferir volúmenes separados a la siguiente semana (conservar cada lado)
           await this.createNextWeekVolume(
             volume.userId,
             currentWeekDates,
-            carryOverVolume,
+            0, // No usamos carryOverVolume genérico
             queryRunner,
+            volume.leftVolume, // Conservar volumen izquierdo tal cual
+            volume.rightVolume, // Conservar volumen derecho tal cual
           );
 
           await queryRunner.commitTransaction();
@@ -877,6 +878,8 @@ export class WeeklyVolumeService {
     weekDates: { weekStart: Date; weekEnd: Date },
     carryOverVolume: number,
     queryRunner: QueryRunner,
+    leftVolume?: number,
+    rightVolume?: number,
   ): Promise<void> {
     const existingVolume = await this.weeklyVolumeRepository.findOne({
       where: {
@@ -894,14 +897,23 @@ export class WeeklyVolumeService {
         userEmail: userInfo.email,
         userName:
           `${userInfo.firstName || ''} ${userInfo.lastName || ''}`.trim(),
-        leftVolume: carryOverVolume,
-        rightVolume: carryOverVolume,
+        leftVolume: leftVolume !== undefined ? leftVolume : carryOverVolume,
+        rightVolume: rightVolume !== undefined ? rightVolume : carryOverVolume,
         weekStartDate: weekDates.weekStart,
         weekEndDate: weekDates.weekEnd,
         status: VolumeProcessingStatus.PENDING,
         metadata: {
           'Volumen transferido': carryOverVolume,
-          Motivo: carryOverVolume > 0 ? 'Volumen transferido' : 'Nuevo período',
+          'Volumen izquierdo':
+            leftVolume !== undefined ? leftVolume : carryOverVolume,
+          'Volumen derecho':
+            rightVolume !== undefined ? rightVolume : carryOverVolume,
+          Motivo:
+            carryOverVolume > 0 ||
+            (leftVolume && leftVolume > 0) ||
+            (rightVolume && rightVolume > 0)
+              ? 'Volumen transferido'
+              : 'Nuevo período',
         },
       });
 
