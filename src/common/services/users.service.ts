@@ -80,6 +80,23 @@ export class UsersService {
     );
   }
 
+  /**
+   * Obtiene la validación de procesamiento de volumen para usuarios directos
+   * Retorna solo userId, hasMembership y position
+   */
+  async getVolumeProcessingValidation(userId: string): Promise<
+    {
+      userId: string;
+      hasMembership: boolean;
+      position: 'LEFT' | 'RIGHT' | null;
+    }[]
+  > {
+    return await this.client.send(
+      { cmd: 'user.validation.volumeProcessing' },
+      { userId },
+    );
+  }
+
   // async getActiveAncestorsWithMembership(
   //   userId: string,
   // ): Promise<ActiveAncestorDto[]> {

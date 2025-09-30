@@ -673,56 +673,33 @@ export class WeeklyVolumeService {
   }
 
   /**
-   * Verifica si el usuario tiene pierna activa en el lado especificado
-   * Implementación equivalente al monolito con queries recursivas
+   * Verifica si el usuario tiene al menos un referido directo con membresía activa en el lado especificado
+   * Usa la nueva API de validación de volumen que retorna solo usuarios directos
    */
   private async checkLeg(userId: string, side: VolumeSide): Promise<boolean> {
     try {
-      // 1. Obtener usuario con sus hijos directos
-      const userWithChildren =
-        await this.usersService.getUserWithChildren(userId);
+      // Obtener validación de usuarios directos con membresía y posición
+      const directUsers =
+        await this.usersService.getVolumeProcessingValidation(userId);
 
-      if (!userWithChildren || !userWithChildren.referralCode) {
-        this.logger.warn(`Usuario ${userId} no encontrado o sin referralCode`);
-        return false;
-      }
-
-      // 2. Determinar el hijo raíz según el lado
-      const rootChildId =
-        side === VolumeSide.LEFT
-          ? userWithChildren.leftChildId
-          : userWithChildren.rightChildId;
-
-      if (!rootChildId) {
-        this.logger.debug(`Usuario ${userId} no tiene hijo ${side}`);
-        return false;
-      }
-
-      // 3. Obtener todos los descendientes en esa pierna
-      const descendants = await this.usersService.getDescendantsInLeg(
-        rootChildId,
-        side,
-      );
-
-      if (!descendants || descendants.length === 0) {
+      if (!directUsers || directUsers.length === 0) {
         this.logger.debug(
-          `No se encontraron descendientes en pierna ${side} para usuario ${userId}`,
+          `Usuario ${userId} no tiene referidos directos activos`,
         );
         return false;
       }
 
-      // 4. Verificar si hay membresías activas en la pierna
-      const hasActiveMemberships =
-        await this.usersService.checkActiveMembershipsInLeg(
-          descendants,
-          userWithChildren.referralCode,
-        );
+      // Filtrar por lado y membresía activa
+      const targetSide = side === VolumeSide.LEFT ? 'LEFT' : 'RIGHT';
+      const hasActiveUserInSide = directUsers.some(
+        (user) => user.position === targetSide && user.hasMembership === true,
+      );
 
       this.logger.debug(
-        `Verificación pierna ${side} para usuario ${userId}: ${descendants.length} descendientes, membresías activas: ${hasActiveMemberships}`,
+        `Verificación pierna ${side} para usuario ${userId}: ${directUsers.length} directos totales, tiene directo activo en ${side}: ${hasActiveUserInSide}`,
       );
 
-      return hasActiveMemberships;
+      return hasActiveUserInSide;
     } catch (error) {
       const errorMessage = this.getErrorMessage(error);
       this.logger.error(
