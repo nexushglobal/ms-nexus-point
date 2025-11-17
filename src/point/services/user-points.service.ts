@@ -204,10 +204,10 @@ export class UserPointsService {
         paymentId,
       } = directBonusDto;
       if (directBonus > 0) {
-        if (!paymentReference || !paymentId)
+        if (!paymentId)
           throw new RpcException({
             status: HttpStatus.BAD_REQUEST,
-            message: `Se necesitan los campos paymentReference y paymentId`,
+            message: `Se necesita ek campo paymentId`,
           });
       }
       // Buscar el referente (igual que en el monolítico)
@@ -274,7 +274,7 @@ export class UserPointsService {
             pointsTransaction: savedTransaction,
             paymentId: paymentId || 0,
             amount: payment ? payment.amount : directBonus,
-            paymentReference: paymentReference || 'Puntos por Unilevel',
+            paymentReference: paymentReference,
             // paymentMethod: 'DIRECT_BONUS',
             notes: `Suma de puntos a ${referrerPoints.userName}`,
             metadata: {
