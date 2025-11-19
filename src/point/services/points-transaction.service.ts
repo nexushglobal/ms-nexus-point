@@ -157,31 +157,36 @@ export class PointsTransactionService extends BaseService<PointsTransaction> {
       const transactionAmounts: Map<number, number> = new Map();
 
       for (const transaction of eligiblePointsTransactions) {
-        const availableAmountInTransaction =
-          transaction.amount -
-          (transaction.pendingAmount || 0) -
-          (transaction.withdrawnAmount || 0);
+        const availableAmountInTransaction = Number(
+          (transaction.amount -
+            (transaction.pendingAmount || 0) -
+            (transaction.withdrawnAmount || 0)).toFixed(10)
+        );
 
         if (availableAmountInTransaction <= 0) continue;
         if (remainingAmountToWithdraw <= 0) break;
 
-        const amountToDeduct = Math.min(
-          remainingAmountToWithdraw,
-          availableAmountInTransaction,
+        const amountToDeduct = Number(
+          Math.min(remainingAmountToWithdraw, availableAmountInTransaction).toFixed(10)
         );
 
-        transaction.pendingAmount =
-          (transaction.pendingAmount || 0) + amountToDeduct;
+        transaction.pendingAmount = Number(
+          ((transaction.pendingAmount || 0) + amountToDeduct).toFixed(10)
+        );
         pointsTransactionsToLink.push(transaction);
         transactionAmounts.set(transaction.id, amountToDeduct);
-        remainingAmountToWithdraw -= amountToDeduct;
+        remainingAmountToWithdraw = Number(
+          (remainingAmountToWithdraw - amountToDeduct).toFixed(10)
+        );
       }
-      // 4. Verificar si se cubrió el monto
-      if (remainingAmountToWithdraw > 0)
+
+      // 4. Verificar si se cubrió el monto (con tolerancia)
+      if (remainingAmountToWithdraw > 1e-8) {
         throw new RpcException({
           status: HttpStatus.BAD_REQUEST,
           message: `No se pudieron seleccionar suficientes puntos archivados disponibles para el retiro. Faltan: ${remainingAmountToWithdraw}`,
         });
+      }
       // 5. Guardar las transacciones modificadas
       await queryRunner.manager.save(pointsTransactionsToLink);
       // 6. Actualizar puntos del usuario
