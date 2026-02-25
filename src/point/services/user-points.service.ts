@@ -203,13 +203,8 @@ export class UserPointsService {
         paymentReference,
         paymentId,
       } = directBonusDto;
-      if (directBonus > 0) {
-        if (!paymentId)
-          throw new RpcException({
-            status: HttpStatus.BAD_REQUEST,
-            message: `Se necesita ek campo paymentId`,
-          });
-      }
+      // paymentId es opcional para ventas externas (unilevel/Huertas)
+      // La relación con el pago se maneja con paymentId || 0 más abajo
       // Buscar el referente (igual que en el monolítico)
       let referrerPoints = await this.userPointsRepository.findOne({
         where: { userId },
