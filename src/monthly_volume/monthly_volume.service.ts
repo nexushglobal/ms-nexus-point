@@ -163,14 +163,17 @@ export class MonthlyVolumeService {
         userData;
       const { monthStartDate, monthEndDate } = this.getCurrentMonthDates();
 
-      const existingVolume = await this.monthlyVolumeRankRepository.findOne({
-        where: {
-          userId: userId,
-          status: MonthlyVolumeStatus.PENDING,
-          monthStartDate: monthStartDate,
-          monthEndDate: monthEndDate,
+      const existingVolume = await queryRunner.manager.findOne(
+        MonthlyVolumeRank,
+        {
+          where: {
+            userId: userId,
+            status: MonthlyVolumeStatus.PENDING,
+            monthStartDate: monthStartDate,
+            monthEndDate: monthEndDate,
+          },
         },
-      });
+      );
 
       let monthlyVolume: MonthlyVolumeRank;
       let action: 'created' | 'updated';
